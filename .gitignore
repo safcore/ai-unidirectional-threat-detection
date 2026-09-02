@@ -1,0 +1,12 @@
+﻿# Root .gitignore for PS-145
+# Environment files — NEVER commit
+**/.env
+backend/.env
+
+# Python artifacts
+**/__pycache__/
+**/*.pyc
+**/.venv/
+
+# Pytest
+**/.pytest_cache/
