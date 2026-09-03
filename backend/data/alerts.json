@@ -1,0 +1,373 @@
+[
+  {
+    "alert_id": "ALT-001",
+    "timestamp": "2026-09-02T08:00:00Z",
+    "threat": "Port Scan",
+    "severity": "HIGH",
+    "confidence": 0.94,
+    "source_ip": "10.0.0.45",
+    "destination_ip": "192.168.1.1",
+    "source_port": 45321,
+    "destination_port": 22,
+    "protocol": "TCP",
+    "mitre": {
+      "tactic": "Discovery",
+      "technique": "T1046",
+      "technique_name": "Network Service Scanning"
+    },
+    "evidence": {
+      "packets": 152,
+      "connections": 87,
+      "ports_scanned": 42
+    }
+  },
+  {
+    "alert_id": "ALT-002",
+    "timestamp": "2026-09-02T08:15:00Z",
+    "threat": "DDoS",
+    "severity": "CRITICAL",
+    "confidence": 0.98,
+    "source_ip": "172.16.10.5",
+    "destination_ip": "192.168.1.20",
+    "source_port": 4000,
+    "destination_port": 80,
+    "protocol": "TCP",
+    "mitre": {
+      "tactic": "Impact",
+      "technique": "T1498",
+      "technique_name": "Network Denial of Service"
+    },
+    "evidence": {
+      "packets": 50000,
+      "connections": 1000,
+      "ports_scanned": 0
+    }
+  },
+  {
+    "alert_id": "ALT-003",
+    "timestamp": "2026-09-02T08:30:00Z",
+    "threat": "C2 Communication",
+    "severity": "CRITICAL",
+    "confidence": 0.91,
+    "source_ip": "192.168.1.77",
+    "destination_ip": "10.10.10.10",
+    "source_port": 51234,
+    "destination_port": 443,
+    "protocol": "HTTPS",
+    "mitre": {
+      "tactic": "Command and Control",
+      "technique": "T1071",
+      "technique_name": "Application Layer Protocol"
+    },
+    "evidence": {
+      "packets": 340,
+      "connections": 12,
+      "flow_duration_ms": 180000
+    }
+  },
+  {
+    "alert_id": "ALT-004",
+    "timestamp": "2026-09-02T09:00:00Z",
+    "threat": "Suspicious DNS",
+    "severity": "MEDIUM",
+    "confidence": 0.77,
+    "source_ip": "192.168.1.55",
+    "destination_ip": "8.8.8.8",
+    "source_port": 54321,
+    "destination_port": 53,
+    "protocol": "DNS",
+    "mitre": {
+      "tactic": "Command and Control",
+      "technique": "T1071.004",
+      "technique_name": "DNS"
+    },
+    "evidence": {
+      "queries": 250,
+      "unique_domains": 80,
+      "packets": 500
+    }
+  },
+  {
+    "alert_id": "ALT-005",
+    "timestamp": "2026-09-02T09:30:00Z",
+    "threat": "Brute Force",
+    "severity": "HIGH",
+    "confidence": 0.89,
+    "source_ip": "10.0.1.33",
+    "destination_ip": "192.168.1.10",
+    "source_port": 60000,
+    "destination_port": 22,
+    "protocol": "TCP",
+    "mitre": {
+      "tactic": "Credential Access",
+      "technique": "T1110",
+      "technique_name": "Brute Force"
+    },
+    "evidence": {
+      "failed_attempts": 350,
+      "connections": 350,
+      "packets": 700
+    }
+  },
+  {
+    "alert_id": "ALT-006",
+    "timestamp": "2026-09-02T10:00:00Z",
+    "threat": "Data Exfiltration",
+    "severity": "CRITICAL",
+    "confidence": 0.86,
+    "source_ip": "192.168.1.88",
+    "destination_ip": "172.20.0.99",
+    "source_port": 45678,
+    "destination_port": 443,
+    "protocol": "HTTPS",
+    "mitre": {
+      "tactic": "Exfiltration",
+      "technique": "T1048",
+      "technique_name": "Exfiltration Over Alternative Protocol"
+    },
+    "evidence": {
+      "bytes_transferred": 524288000,
+      "connections": 45,
+      "packets": 8200
+    }
+  },
+  {
+    "alert_id": "ALT-007",
+    "timestamp": "2026-09-02T10:30:00Z",
+    "threat": "Port Scan",
+    "severity": "MEDIUM",
+    "confidence": 0.72,
+    "source_ip": "10.0.2.15",
+    "destination_ip": "192.168.1.5",
+    "source_port": 33445,
+    "destination_port": 3389,
+    "protocol": "TCP",
+    "mitre": {
+      "tactic": "Discovery",
+      "technique": "T1046",
+      "technique_name": "Network Service Scanning"
+    },
+    "evidence": {
+      "packets": 60,
+      "connections": 30,
+      "ports_scanned": 15
+    }
+  },
+  {
+    "alert_id": "ALT-008",
+    "timestamp": "2026-09-02T11:00:00Z",
+    "threat": "Brute Force",
+    "severity": "HIGH",
+    "confidence": 0.93,
+    "source_ip": "10.0.3.7",
+    "destination_ip": "192.168.1.15",
+    "source_port": 61000,
+    "destination_port": 3389,
+    "protocol": "TCP",
+    "mitre": {
+      "tactic": "Credential Access",
+      "technique": "T1110",
+      "technique_name": "Brute Force"
+    },
+    "evidence": {
+      "failed_attempts": 500,
+      "connections": 500,
+      "packets": 1000
+    }
+  },
+  {
+    "alert_id": "ALT-101",
+    "protocol": "TCP",
+    "evidence": {
+      "ports_scanned": 0,
+      "packets": 50000,
+      "connections": 1000
+    },
+    "source_ip": "172.16.10.5",
+    "destination_ip": "192.168.1.20",
+    "severity": "CRITICAL",
+    "threat": "DDoS",
+    "timestamp": "2026-09-02T14:30:00Z",
+    "confidence": 0.98,
+    "mitre": {
+      "technique_name": "Network Denial of Service",
+      "technique": "T1498",
+      "tactic": "Impact"
+    },
+    "destination_port": 80,
+    "source_port": 4000
+  },
+  {
+    "alert_id": "ALT-999",
+    "evidence": {
+      "connections": 25,
+      "packets": 500
+    },
+    "source_ip": "10.0.0.50",
+    "destination_ip": "192.168.1.100",
+    "confidence": 0.95,
+    "threat": "Manual Test Threat",
+    "source_port": 50000,
+    "timestamp": "2026-09-02T14:50:00Z",
+    "mitre": {
+      "technique_name": "Application Layer Protocol",
+      "technique": "T1071",
+      "tactic": "Command and Control"
+    },
+    "severity": "HIGH",
+    "protocol": "HTTPS",
+    "destination_port": 443
+  },
+  {
+    "alert_id": "ALT-997",
+    "evidence": {
+      "connections": 100,
+      "packets": 5000
+    },
+    "source_ip": "10.0.0.99",
+    "destination_ip": "192.168.1.200",
+    "confidence": 0.99,
+    "threat": "SSE Test Threat",
+    "source_port": 55555,
+    "timestamp": "2026-09-02T15:00:00Z",
+    "mitre": {
+      "technique_name": "Application Layer Protocol",
+      "technique": "T1071",
+      "tactic": "Command and Control"
+    },
+    "severity": "CRITICAL",
+    "protocol": "HTTPS",
+    "destination_port": 443
+  },
+  {
+    "alert_id": "ALT-123",
+    "timestamp": "2026-09-02T12:00:00Z",
+    "threat": "Live Verification",
+    "severity": "MEDIUM",
+    "confidence": 0.8,
+    "source_ip": "10.0.0.10",
+    "destination_ip": "10.0.0.20",
+    "source_port": 11111,
+    "destination_port": 443,
+    "protocol": "TCP",
+    "mitre": {
+      "tactic": "Reconnaissance",
+      "technique": "T1595",
+      "technique_name": "Active Scanning"
+    },
+    "evidence": {
+      "verification": "live_test",
+      "packets": 5
+    }
+  },
+  {
+    "alert_id": "ALT-102",
+    "timestamp": "2026-09-03T18:11:09Z",
+    "threat": "DDoS",
+    "severity": "CRITICAL",
+    "confidence": 0.98,
+    "source_ip": "172.16.10.5",
+    "destination_ip": "192.168.1.20",
+    "source_port": 4000,
+    "destination_port": 80,
+    "protocol": "TCP",
+    "mitre": {
+      "tactic": "Impact",
+      "technique": "T1498",
+      "technique_name": "Network Denial of Service"
+    },
+    "evidence": {
+      "packets": 50000,
+      "connections": 1000,
+      "ports_scanned": 0
+    }
+  },
+  {
+    "alert_id": "ALT-103",
+    "timestamp": "2026-09-03T18:11:10Z",
+    "threat": "C2 Communication",
+    "severity": "CRITICAL",
+    "confidence": 0.91,
+    "source_ip": "192.168.1.77",
+    "destination_ip": "10.10.10.10",
+    "source_port": 51234,
+    "destination_port": 443,
+    "protocol": "HTTPS",
+    "mitre": {
+      "tactic": "Command and Control",
+      "technique": "T1071",
+      "technique_name": "Application Layer Protocol"
+    },
+    "evidence": {
+      "packets": 340,
+      "connections": 12,
+      "flow_duration_ms": 180000
+    }
+  },
+  {
+    "alert_id": "ALT-104",
+    "timestamp": "2026-09-03T18:11:11Z",
+    "threat": "Suspicious DNS",
+    "severity": "MEDIUM",
+    "confidence": 0.77,
+    "source_ip": "192.168.1.55",
+    "destination_ip": "8.8.8.8",
+    "source_port": 54321,
+    "destination_port": 53,
+    "protocol": "DNS",
+    "mitre": {
+      "tactic": "Command and Control",
+      "technique": "T1071.004",
+      "technique_name": "DNS"
+    },
+    "evidence": {
+      "queries": 250,
+      "unique_domains": 80,
+      "packets": 500
+    }
+  },
+  {
+    "alert_id": "ALT-105",
+    "timestamp": "2026-09-03T18:11:12Z",
+    "threat": "Brute Force",
+    "severity": "HIGH",
+    "confidence": 0.89,
+    "source_ip": "10.0.1.33",
+    "destination_ip": "192.168.1.10",
+    "source_port": 60000,
+    "destination_port": 22,
+    "protocol": "TCP",
+    "mitre": {
+      "tactic": "Credential Access",
+      "technique": "T1110",
+      "technique_name": "Brute Force"
+    },
+    "evidence": {
+      "failed_attempts": 350,
+      "connections": 350,
+      "packets": 700
+    }
+  },
+  {
+    "alert_id": "ALT-106",
+    "timestamp": "2026-09-03T18:11:13Z",
+    "threat": "Data Exfiltration",
+    "severity": "CRITICAL",
+    "confidence": 0.86,
+    "source_ip": "192.168.1.88",
+    "destination_ip": "172.20.0.99",
+    "source_port": 45678,
+    "destination_port": 443,
+    "protocol": "HTTPS",
+    "mitre": {
+      "tactic": "Exfiltration",
+      "technique": "T1048",
+      "technique_name": "Exfiltration Over Alternative Protocol"
+    },
+    "evidence": {
+      "bytes_transferred": 524288000,
+      "connections": 45,
+      "packets": 8200
+    }
+  }
+]
