@@ -1,0 +1,81 @@
+# Environment / secrets — NEVER commit
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.cache/
+coverage.xml
+*.cover
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+wheels/
+*.egg
+.Python
+
+# Flask
+instance/
+.webassets-cache
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Type checking / linters
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Temporary files
+tempCodeRunnerFile.py
+
+# Large datasets & PCAP files — NEVER commit
+*.pcap
+*.pcapng
+*.csv
+ml/data/
+data/raw/
+data/processed/
+data/features/
+data/*.db
+data/phase4_investigation.db
+scratch/
+walkthrough_package/

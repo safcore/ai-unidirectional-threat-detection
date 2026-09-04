@@ -1,0 +1,18 @@
+{
+  "10.0.0.5": {
+    "ip": "10.0.0.5",
+    "reputation": "MALICIOUS",
+    "confidence": 0.95,
+    "source": "LOCAL DEMONSTRATION INTELLIGENCE",
+    "categories": ["Botnet", "Scanner"],
+    "threat_actor": "APT29 Simulation"
+  },
+  "192.168.1.100": {
+    "ip": "192.168.1.100",
+    "reputation": "SUSPICIOUS",
+    "confidence": 0.70,
+    "source": "LOCAL DEMONSTRATION INTELLIGENCE",
+    "categories": ["BruteForce"],
+    "threat_actor": "Unknown Scanner"
+  }
+}
