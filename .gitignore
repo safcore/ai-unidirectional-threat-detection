@@ -66,16 +66,3 @@ Thumbs.db
 
 # Temporary files
 tempCodeRunnerFile.py
-
-# Large datasets & PCAP files — NEVER commit
-*.pcap
-*.pcapng
-*.csv
-ml/data/
-data/raw/
-data/processed/
-data/features/
-data/*.db
-data/phase4_investigation.db
-scratch/
-walkthrough_package/
