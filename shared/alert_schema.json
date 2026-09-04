@@ -1,0 +1,99 @@
+﻿{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThreatDetectionAlert",
+  "description": "Standard alert contract for the PS-145 cybersecurity threat-detection pipeline. All detection modules (ML, rule-based, PCAP-based) must produce alerts conforming to this schema before POSTing to the Flask backend.",
+  "type": "object",
+  "required": [
+    "alert_id",
+    "timestamp",
+    "threat",
+    "severity",
+    "confidence",
+    "source_ip",
+    "destination_ip",
+    "source_port",
+    "destination_port",
+    "protocol",
+    "mitre",
+    "evidence"
+  ],
+  "properties": {
+    "alert_id": {
+      "type": "string",
+      "description": "Unique identifier for the alert. Format: ALT-NNN. Must be unique across all alerts.",
+      "pattern": "^ALT-[0-9]+$",
+      "examples": ["ALT-001", "ALT-042"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of when the threat was detected.",
+      "examples": ["2026-09-02T14:00:00Z"]
+    },
+    "threat": {
+      "type": "string",
+      "description": "Human-readable threat type/category.",
+      "examples": ["Port Scan", "DDoS", "C2 Communication", "Suspicious DNS", "Brute Force", "Data Exfiltration"]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+      "description": "Severity level of the alert."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Model/rule confidence score between 0.0 and 1.0."
+    },
+    "source_ip": {
+      "type": "string",
+      "description": "Source IP address of the traffic that triggered the alert."
+    },
+    "destination_ip": {
+      "type": "string",
+      "description": "Destination IP address."
+    },
+    "source_port": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Source port number."
+    },
+    "destination_port": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Destination port number."
+    },
+    "protocol": {
+      "type": "string",
+      "enum": ["TCP", "UDP", "ICMP", "HTTP", "HTTPS", "DNS", "OTHER"],
+      "description": "Network protocol."
+    },
+    "mitre": {
+      "type": "object",
+      "description": "MITRE ATT&CK mapping for this alert.",
+      "required": ["tactic", "technique", "technique_name"],
+      "properties": {
+        "tactic": { "type": "string" },
+        "technique": { "type": "string", "pattern": "^T[0-9]+(\\.[0-9]+)?$" },
+        "technique_name": { "type": "string" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "description": "Evidence/features that triggered this alert.",
+      "properties": {
+        "packets": { "type": "integer" },
+        "connections": { "type": "integer" },
+        "ports_scanned": { "type": "integer" },
+        "bytes_transferred": { "type": "integer" },
+        "failed_attempts": { "type": "integer" },
+        "queries": { "type": "integer" },
+        "unique_domains": { "type": "integer" },
+        "flow_duration_ms": { "type": "number" }
+      }
+    }
+  }
+}
