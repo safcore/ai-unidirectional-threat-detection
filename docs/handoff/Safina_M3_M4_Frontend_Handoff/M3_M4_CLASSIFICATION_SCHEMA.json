@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "M3_M4_Classification_Schema",
+  "type": "object",
+  "description": "Parallel M3 and M4 classification outputs preserved in unified threat events.",
+  "properties": {
+    "classifications": {
+      "type": "object",
+      "properties": {
+        "m3": {
+          "type": "object",
+          "description": "Krisha's independent M3 DDoS & PortScan Random Forest prediction.",
+          "properties": {
+            "threat_class": {
+              "type": "string",
+              "enum": ["BENIGN", "DDOS", "PORT_SCAN"],
+              "description": "Predicted threat class from M3 classifier."
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "description": "Model prediction confidence score."
+            },
+            "probabilities": {
+              "type": "object",
+              "description": "Probability distribution across M3 classes.",
+              "additionalProperties": {
+                "type": "number"
+              }
+            },
+            "anomaly_score": {
+              "type": "number",
+              "description": "Anomaly score (0.0 for M3)."
+            }
+          },
+          "required": ["threat_class", "confidence", "probabilities", "anomaly_score"]
+        },
+        "m4": {
+          "type": "object",
+          "description": "Aayushman's M4 Baseline Random Forest & Isolation Forest prediction.",
+          "properties": {
+            "threat_class": {
+              "type": "string",
+              "enum": ["BENIGN", "DDOS", "PORT_SCAN", "DOS", "BRUTE_FORCE", "WEB_ATTACK", "OTHER_ATTACK"],
+              "description": "Predicted threat class from M4 classifier."
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "description": "Model prediction confidence score."
+            },
+            "probabilities": {
+              "type": "object",
+              "description": "Probability distribution across M4 classes.",
+              "additionalProperties": {
+                "type": "number"
+              }
+            },
+            "anomaly_score": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "description": "Isolation Forest normalized anomaly score."
+            }
+          },
+          "required": ["threat_class", "confidence", "probabilities", "anomaly_score"]
+        }
+      },
+      "required": ["m3", "m4"]
+    }
+  },
+  "required": ["classifications"]
+}
