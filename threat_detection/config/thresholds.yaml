@@ -1,0 +1,67 @@
+# thresholds.yaml
+#
+# PROTOTYPE / LAB THRESHOLDS ONLY.
+#
+# These numbers are placeholders chosen to make the Milestone 1 demo
+# behave sensibly on synthetic data. They are NOT derived from any real
+# traffic baseline and MUST be recalibrated against real network traffic
+# (or at least a representative PCAP corpus) before being trusted in any
+# operational setting. Treat every value below as "TODO: calibrate".
+
+detection:
+  # Below this fused confidence, we do not raise an alert at all.
+  minimum_confidence: 0.60
+
+  # Confidence banding used purely for human-readable labeling.
+  # (See PROMPT section 16 - these are NOT statistically calibrated
+  # probabilities, just a labeling convention for rule scores.)
+  confidence_bands:
+    insufficient_evidence: 0.59
+    medium: 0.74
+    high: 0.89
+    # anything above "high" is "very_high"
+
+ddos:
+  # Score components are each normalized 0..1 against these "high"
+  # values, then combined with the weights below.
+  packet_rate_warning: 1000      # packets/sec
+  packet_rate_high: 5000         # packets/sec
+  byte_rate_high: 10000000       # bytes/sec (10 MB/s)
+  syn_rate_high: 1000            # SYN packets/sec (syn_count / duration)
+  syn_ack_imbalance_ratio: 10.0  # syn_count / max(ack_count, 1)
+  min_packet_count: 50           # ignore tiny flows entirely
+
+  weights:
+    packet_rate: 0.30
+    byte_rate: 0.20
+    syn_rate: 0.25
+    syn_ack_imbalance: 0.15
+    short_duration_volume: 0.10
+
+  # A flow shorter than this (seconds) with high packet_count is treated
+  # as "short duration, high volume" - a classic volumetric-attack shape.
+  short_duration_seconds: 3.0
+  short_duration_packet_count: 2000
+
+port_scan:
+  window_seconds: 5          # sliding time window per source IP
+  unique_ports_warning: 8
+  unique_ports_high: 20
+  syn_count_high: 20
+  min_events_to_evaluate: 3  # need at least this many flows in-window
+
+  weights:
+    unique_ports: 0.5
+    syn_intensity: 0.3
+    port_concentration: 0.2  # low unique-dst-IP but many ports = focused scan
+
+severity:
+  # Severity is NOT simply equal to confidence (see PROMPT section 17).
+  # These bands combine confidence with threat-specific intensity checks
+  # implemented in alerts/severity.py.
+  confidence_critical: 0.90
+  confidence_high: 0.75
+  confidence_medium: 0.60
+
+  ddos_critical_packet_rate: 20000   # packets/sec -> force CRITICAL
+  port_scan_critical_unique_ports: 100

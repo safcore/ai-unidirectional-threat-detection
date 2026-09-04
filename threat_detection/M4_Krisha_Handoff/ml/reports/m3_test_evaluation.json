@@ -1,0 +1,66 @@
+{
+  "report_type": "M3 test-set evaluation results",
+  "scope_note": "These results describe this test split only and are not real-world performance claims.",
+  "evaluation_dataset": "ml/data/test.csv",
+  "evaluation_split": "test",
+  "evaluated_samples": 210199,
+  "evaluated_classes": [
+    "BENIGN",
+    "DDOS",
+    "PORT_SCAN"
+  ],
+  "accuracy": 1.0,
+  "macro_precision": 0.9999,
+  "macro_recall": 0.9999,
+  "macro_f1": 0.9999,
+  "per_class_metrics": {
+    "BENIGN": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 177373
+    },
+    "DDOS": {
+      "precision": 0.9998,
+      "recall": 0.9999,
+      "f1": 0.9999,
+      "support": 19203
+    },
+    "PORT_SCAN": {
+      "precision": 1.0,
+      "recall": 0.9998,
+      "f1": 0.9999,
+      "support": 13623
+    }
+  },
+  "confusion_matrix": {
+    "labels": [
+      "BENIGN",
+      "DDOS",
+      "PORT_SCAN"
+    ],
+    "matrix": [
+      [
+        177370,
+        3,
+        0
+      ],
+      [
+        1,
+        19202,
+        0
+      ],
+      [
+        3,
+        0,
+        13620
+      ]
+    ]
+  },
+  "m3_model_identifier": "RandomForestClassifier",
+  "feature_schema": {
+    "path": "C:\\Users\\billi\\Downloads\\threat_detection_milestone1\\M4_Krisha_Handoff\\ml\\models\\feature_schema.json",
+    "version": "1.0.0"
+  },
+  "timestamp": "2026-09-03T18:04:32.836933+00:00"
+}

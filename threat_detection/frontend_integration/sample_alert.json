@@ -1,0 +1,33 @@
+{
+  "alert_id": "ALT-000001",
+  "timestamp": "2026-09-02T09:42:45Z",
+  "flow_id": "demo-ddos-001",
+  "source": {
+    "ip": "203.0.113.5",
+    "port": 4000
+  },
+  "destination": {
+    "ip": "10.0.0.20",
+    "port": 80
+  },
+  "protocol": "TCP",
+  "threat_class": "DDoS",
+  "confidence": 1.0,
+  "severity": "CRITICAL",
+  "detection_method": [
+    "RULE"
+  ],
+  "evidence": [
+    "Packet rate 10000 pkt/s exceeds baseline (warning=1000, high=5000)",
+    "Byte rate 15000000 B/s is elevated (high threshold=10000000)",
+    "High SYN activity: 7000 SYNs over 2.00s (~3500/s)",
+    "SYN/ACK imbalance: 7000 SYN vs 100 ACK",
+    "Large packet volume (20000) observed over short duration (2.00s)"
+  ],
+  "mitre": {
+    "tactic": "Impact",
+    "technique_id": null,
+    "verify": true
+  },
+  "status": "NEW"
+}
