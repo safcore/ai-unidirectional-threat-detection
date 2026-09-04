@@ -1,0 +1,16 @@
+{
+  "malicious-c2-server.com": {
+    "domain": "malicious-c2-server.com",
+    "reputation": "MALICIOUS",
+    "confidence": 0.98,
+    "source": "LOCAL DEMONSTRATION INTELLIGENCE",
+    "categories": ["C2", "DGA"]
+  },
+  "suspicious-scanner-net.org": {
+    "domain": "suspicious-scanner-net.org",
+    "reputation": "SUSPICIOUS",
+    "confidence": 0.75,
+    "source": "LOCAL DEMONSTRATION INTELLIGENCE",
+    "categories": ["PortScan"]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "known_hashes": {
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": {
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "type": "SHA256",
+      "reputation": "MALICIOUS",
+      "confidence": 1.0,
+      "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+    }
+  }
+}

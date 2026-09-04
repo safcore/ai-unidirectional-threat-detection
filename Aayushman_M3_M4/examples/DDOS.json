@@ -1,0 +1,247 @@
+{
+  "event": {
+    "status": "success",
+    "event_id": "2d8d6611-917c-4688-8115-9f1a47545349",
+    "timestamp": "2026-09-04T04:31:32.908212+00:00",
+    "threat_class": "BENIGN",
+    "decision": "BENIGN",
+    "confidence": 0.8,
+    "anomaly_score": 0.101,
+    "decision_reason": "Confirmed BENIGN flow with confidence 0.80 and low anomaly score 0.10.",
+    "probabilities": {
+      "BENIGN": 0.8,
+      "BRUTE_FORCE": 0.0,
+      "DDOS": 0.03,
+      "DOS": 0.12,
+      "OTHER_ATTACK": 0.03,
+      "PORT_SCAN": 0.01,
+      "WEB_ATTACK": 0.01
+    },
+    "classifications": {
+      "m3": {
+        "threat_class": "BENIGN",
+        "confidence": 0.91,
+        "probabilities": {
+          "BENIGN": 0.91,
+          "DDOS": 0.06,
+          "PORT_SCAN": 0.03
+        },
+        "anomaly_score": 0.0
+      },
+      "m4": {
+        "threat_class": "BENIGN",
+        "confidence": 0.8,
+        "probabilities": {
+          "BENIGN": 0.8,
+          "BRUTE_FORCE": 0.0,
+          "DDOS": 0.03,
+          "DOS": 0.12,
+          "OTHER_ATTACK": 0.03,
+          "PORT_SCAN": 0.01,
+          "WEB_ATTACK": 0.01
+        },
+        "anomaly_score": 0.101
+      }
+    },
+    "source": {
+      "src_ip": "192.168.1.100",
+      "src_port": 43210
+    },
+    "destination": {
+      "dst_ip": "10.0.0.20",
+      "dst_port": 80
+    },
+    "model": {
+      "classifier": "Parallel_M3_M4_RandomForest",
+      "model_version": "phase3_m3_m4_fusion"
+    },
+    "alert": {
+      "alert_id": "d4180956-b3e6-45eb-8039-c686a6622c5b",
+      "severity": "INFO",
+      "title": "Benign Network Flow",
+      "threat_class": "BENIGN",
+      "decision": "BENIGN",
+      "confidence": 0.8,
+      "anomaly_score": 0.101,
+      "timestamp": "2026-09-04T04:31:32.908186+00:00",
+      "status": "NEW"
+    }
+  },
+  "incident": {
+    "incident_id": "inc-192-168-1-100",
+    "title": "Security Incident: BENIGN from 192.168.1.100",
+    "created_at": "2026-09-04T04:31:32.908495+00:00",
+    "updated_at": "2026-09-04T04:31:32.908495+00:00",
+    "status": "NEW",
+    "risk_score": 37.27,
+    "risk_level": "MEDIUM",
+    "source_entity": "192.168.1.100",
+    "target_entity": "10.0.0.20",
+    "events": [
+      {
+        "status": "success",
+        "event_id": "2d8d6611-917c-4688-8115-9f1a47545349",
+        "timestamp": "2026-09-04T04:31:32.908212+00:00",
+        "threat_class": "BENIGN",
+        "decision": "BENIGN",
+        "confidence": 0.8,
+        "anomaly_score": 0.101,
+        "decision_reason": "Confirmed BENIGN flow with confidence 0.80 and low anomaly score 0.10.",
+        "probabilities": {
+          "BENIGN": 0.8,
+          "BRUTE_FORCE": 0.0,
+          "DDOS": 0.03,
+          "DOS": 0.12,
+          "OTHER_ATTACK": 0.03,
+          "PORT_SCAN": 0.01,
+          "WEB_ATTACK": 0.01
+        },
+        "classifications": {
+          "m3": {
+            "threat_class": "BENIGN",
+            "confidence": 0.91,
+            "probabilities": {
+              "BENIGN": 0.91,
+              "DDOS": 0.06,
+              "PORT_SCAN": 0.03
+            },
+            "anomaly_score": 0.0
+          },
+          "m4": {
+            "threat_class": "BENIGN",
+            "confidence": 0.8,
+            "probabilities": {
+              "BENIGN": 0.8,
+              "BRUTE_FORCE": 0.0,
+              "DDOS": 0.03,
+              "DOS": 0.12,
+              "OTHER_ATTACK": 0.03,
+              "PORT_SCAN": 0.01,
+              "WEB_ATTACK": 0.01
+            },
+            "anomaly_score": 0.101
+          }
+        },
+        "source": {
+          "src_ip": "192.168.1.100",
+          "src_port": 43210
+        },
+        "destination": {
+          "dst_ip": "10.0.0.20",
+          "dst_port": 80
+        },
+        "model": {
+          "classifier": "Parallel_M3_M4_RandomForest",
+          "model_version": "phase3_m3_m4_fusion"
+        },
+        "alert": {
+          "alert_id": "d4180956-b3e6-45eb-8039-c686a6622c5b",
+          "severity": "INFO",
+          "title": "Benign Network Flow",
+          "threat_class": "BENIGN",
+          "decision": "BENIGN",
+          "confidence": 0.8,
+          "anomaly_score": 0.101,
+          "timestamp": "2026-09-04T04:31:32.908186+00:00",
+          "status": "NEW"
+        }
+      }
+    ],
+    "mitre_mappings": [],
+    "iocs": [
+      {
+        "ioc_type": "IPv4",
+        "value": "192.168.1.100",
+        "first_seen": "2026-09-04T04:31:32.908212+00:00",
+        "last_seen": "2026-09-04T04:31:32.908212+00:00",
+        "source_event_id": "2d8d6611-917c-4688-8115-9f1a47545349",
+        "confidence": 0.8,
+        "intel": {
+          "ip": "192.168.1.100",
+          "reputation": "SUSPICIOUS",
+          "confidence": 0.7,
+          "source": "LOCAL DEMONSTRATION INTELLIGENCE",
+          "categories": [
+            "BruteForce"
+          ],
+          "threat_actor": "Unknown Scanner",
+          "status": "found"
+        }
+      },
+      {
+        "ioc_type": "IPv4",
+        "value": "10.0.0.20",
+        "first_seen": "2026-09-04T04:31:32.908212+00:00",
+        "last_seen": "2026-09-04T04:31:32.908212+00:00",
+        "source_event_id": "2d8d6611-917c-4688-8115-9f1a47545349",
+        "confidence": 0.8,
+        "intel": {
+          "ip": "10.0.0.20",
+          "reputation": "UNKNOWN",
+          "confidence": 0.0,
+          "status": "not_found",
+          "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+        }
+      },
+      {
+        "ioc_type": "Port",
+        "value": "80",
+        "first_seen": "2026-09-04T04:31:32.908212+00:00",
+        "last_seen": "2026-09-04T04:31:32.908212+00:00",
+        "source_event_id": "2d8d6611-917c-4688-8115-9f1a47545349",
+        "confidence": 0.8,
+        "intel": {
+          "value": "80",
+          "reputation": "UNKNOWN",
+          "confidence": 0.0,
+          "status": "not_applicable",
+          "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+        }
+      }
+    ],
+    "attack_chain": [
+      {
+        "stage_id": 1,
+        "timestamp": "2026-09-04T04:31:32.908212+00:00",
+        "event_id": "2d8d6611-917c-4688-8115-9f1a47545349",
+        "threat_class": "BENIGN",
+        "decision": "BENIGN",
+        "severity": "INFO",
+        "mitre_technique_id": null,
+        "mitre_technique_name": null,
+        "confidence": 0.8,
+        "evidence": [
+          "Initial observed event 'BENIGN' from 192.168.1.100"
+        ],
+        "stage_status": "OBSERVED"
+      }
+    ],
+    "timeline": [
+      {
+        "timestamp": "2026-09-04T04:31:32.908212+00:00",
+        "event_id": "2d8d6611-917c-4688-8115-9f1a47545349",
+        "threat_class": "BENIGN",
+        "decision": "BENIGN",
+        "severity": "INFO",
+        "risk_score": 37.27,
+        "src_ip": "192.168.1.100",
+        "dst_ip": "10.0.0.20",
+        "dst_port": 80,
+        "mitre_technique_id": null,
+        "evidence_snippet": "Observed 'BENIGN' (BENIGN) targeting port 80 with confidence 0.80."
+      }
+    ],
+    "explanation": {
+      "summary": "Detected 1 correlated security event(s) originating from host '192.168.1.100' with primary classification 'BENIGN'.",
+      "why_malicious": "Supervised ML model predicted 'BENIGN' with confidence 0.80 and Isolation Forest anomaly severity 0.10.",
+      "why_risk_level": "Assigned explainable engineering risk score 37.3/100 (MEDIUM) due to Risk score 37.3/100 (MEDIUM) computed from ML confidence (80.0), anomaly severity (10.1), alert severity (10.0), threat intel reputation (60.0), and event correlation depth (25.0).",
+      "evidence_list": [
+        "Event 1: BENIGN (BENIGN) at 2026-09-04T04:31:32.908212+00:00 [Conf: 0.80, Anomaly: 0.10]"
+      ],
+      "mitre_context": [],
+      "intel_context": [
+        "Threat intelligence enrichment provides additional contextual evidence: Extracted 3 IOC(s) with overall reputation 'SUSPICIOUS'."
+      ]
+    }
+  }
+}
