@@ -1,0 +1,9 @@
+{
+  "10.0.0.5": {
+    "reputation": "MALICIOUS",
+    "confidence": 0.99,
+    "source": "LOCAL DEMONSTRATION INTELLIGENCE",
+    "threat_type": "PORT_SCAN",
+    "description": "Synthetic malicious IP used for offline SIH demonstration and automated testing."
+  }
+}

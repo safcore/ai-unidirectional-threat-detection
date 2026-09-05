@@ -66,3 +66,10 @@ Thumbs.db
 
 # Temporary files
 tempCodeRunnerFile.py
+
+# Teamwork inspection material — not tracked
+teamwork/
+teamwork/_inspection/
+*.pyc
+**/__pycache__/
+*.db

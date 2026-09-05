@@ -1,0 +1,9 @@
+{
+  "malicious-example.test": {
+    "reputation": "MALICIOUS",
+    "confidence": 0.99,
+    "source": "LOCAL DEMONSTRATION INTELLIGENCE",
+    "threat_type": "C2",
+    "description": "Synthetic malicious domain used for offline demonstration."
+  }
+}

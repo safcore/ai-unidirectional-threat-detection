@@ -11,6 +11,9 @@ import logging
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 
 from . import alert_store, stream_manager
+from .attack_service import attack_service
+from .m4_integration import m4_available, process_detection, validate_detection_input
+from .m2_adapter import M2AdapterError, normalize_m2_output
 from .models import validate_alert
 
 logger = logging.getLogger(__name__)
@@ -33,6 +36,10 @@ def root():
             "POST /api/alerts",
             "GET  /api/stats",
             "GET  /api/stream",
+            "POST /api/detect",
+            "POST /api/attack/start",
+            "POST /api/attack/stop",
+            "GET  /api/attack/status",
             "GET  /api/ai/health",
             "POST /api/ai/analyze/<alert_id>",
             "POST /api/ai/correlate",
@@ -50,7 +57,41 @@ def health():
         "status": "healthy",
         "service": "threat-detection-backend",
         "sse_clients": stream_manager.client_count,
+        "m4": {"available": m4_available()},
     })
+
+
+@api_bp.route("/api/detect", methods=["POST"])
+def detect():
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "Request body must be valid JSON"}), 400
+    errors = validate_detection_input(data)
+    if errors:
+        return jsonify({"error": "Invalid detection request", "details": errors}), 422
+
+    try:
+        features, metadata = normalize_m2_output(data)
+        event, incident, alert = process_detection(features, metadata)
+        if alert_store.id_exists(alert["alert_id"]):
+            return jsonify({"error": "Generated duplicate alert_id"}), 500
+        stored = alert_store.add(alert)
+        stream_manager.broadcast(stored)
+        return jsonify({
+            "success": True,
+            "event": event,
+            "incident": incident.to_dict(),
+            "alert": stored,
+        }), 200
+    except (ValueError, M2AdapterError) as exc:
+        logger.warning("M4 detection rejected input: %s", exc)
+        return jsonify({"error": "M4 detection failed", "details": str(exc)}), 422
+    except OSError:
+        logger.exception("M4 detection storage failure")
+        return jsonify({"error": "Failed to store detection alert"}), 500
+    except Exception:
+        logger.exception("M4 detection route failure")
+        return jsonify({"error": "M4 detection unavailable"}), 503
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -148,6 +189,61 @@ def stream():
             "X-Accel-Buffering": "no",   # disable Nginx buffering if behind proxy
         },
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Attack Traffic Generator Endpoints (M6 Demonstration)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@api_bp.route("/api/attack/start", methods=["POST"])
+def start_attack():
+    """Start an attack traffic generator in simulation or live mode."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+
+    attack_type = data.get("attack_type") or data.get("type")
+    if not attack_type or not isinstance(attack_type, str):
+        return jsonify({"error": "'attack_type' is required (e.g. syn_flood, port_scan, dns_tunnel)"}), 400
+
+    params = data.get("params") or {}
+    if not isinstance(params, dict):
+        return jsonify({"error": "'params' must be an object"}), 400
+
+    try:
+        job = attack_service.start_attack(attack_type, params)
+        return jsonify({"status": "started", "attack": job}), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.exception("Failed to start attack")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/api/attack/stop", methods=["POST"])
+def stop_attack():
+    """Stop a running attack by ID, or stop all attacks if attack_id is omitted."""
+    data = request.get_json(silent=True) or {}
+    attack_id = data.get("attack_id")
+
+    if attack_id:
+        result = attack_service.stop_attack(attack_id)
+        if not result:
+            return jsonify({"error": f"Attack job '{attack_id}' not found"}), 404
+        return jsonify({"status": "stopping", "attack": result}), 200
+    else:
+        stopped_count = attack_service.stop_all()
+        return jsonify({"status": "stopped", "stopped_count": stopped_count}), 200
+
+
+@api_bp.route("/api/attack/status", methods=["GET"])
+def attack_status():
+    """Get status of a specific attack or all attack jobs."""
+    attack_id = request.args.get("attack_id")
+    result = attack_service.get_status(attack_id)
+    if attack_id and not result.get("found"):
+        return jsonify({"error": f"Attack job '{attack_id}' not found"}), 404
+    return jsonify(result), 200
 
 
 # ─────────────────────────────────────────────────────────────────────────────
