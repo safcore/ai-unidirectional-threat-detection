@@ -9,23 +9,23 @@ IMPORTANT: This client only sends synthetic JSON alerts.
 It does NOT perform any actual network attacks or scans.
 
 Usage:
-    # Send all sample alerts (one by one, with delay):
+    # Send all sample alerts:
     python test_client.py
 
     # Send a single specific alert type:
     python test_client.py --threat "DDoS"
 
-    # Loop continuously (for SSE demo):
+    # Loop continuously for SSE demo:
     python test_client.py --loop
 
     # Target a different host:
-    python test_client.py --url http://192.168.1.5:8000
+    python test_client.py --url http://192.168.1.5:5000
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-import random
 import sys
 import time
 import urllib.error
@@ -33,15 +33,16 @@ import urllib.request
 from datetime import datetime, timezone
 
 
-BASE_URL = "http://127.0.0.1:8000"
+# Actual Flask backend port
+BASE_URL = "http://127.0.0.1:5000"
+
 
 # ── Sample alert templates ────────────────────────────────────────────────────
-# Uses private/RFC-5737 test IP addresses only (10.x, 192.168.x, 172.16.x).
 
 SAMPLE_ALERTS = [
     {
         "alert_id": "ALT-101",
-        "timestamp": "",  # filled at send time
+        "timestamp": "",
         "threat": "Port Scan",
         "severity": "HIGH",
         "confidence": 0.94,
@@ -55,7 +56,11 @@ SAMPLE_ALERTS = [
             "technique": "T1046",
             "technique_name": "Network Service Scanning",
         },
-        "evidence": {"packets": 152, "connections": 87, "ports_scanned": 42},
+        "evidence": {
+            "packets": 152,
+            "connections": 87,
+            "ports_scanned": 42,
+        },
     },
     {
         "alert_id": "ALT-102",
@@ -73,7 +78,11 @@ SAMPLE_ALERTS = [
             "technique": "T1498",
             "technique_name": "Network Denial of Service",
         },
-        "evidence": {"packets": 50000, "connections": 1000, "ports_scanned": 0},
+        "evidence": {
+            "packets": 50000,
+            "connections": 1000,
+            "ports_scanned": 0,
+        },
     },
     {
         "alert_id": "ALT-103",
@@ -91,7 +100,11 @@ SAMPLE_ALERTS = [
             "technique": "T1071",
             "technique_name": "Application Layer Protocol",
         },
-        "evidence": {"packets": 340, "connections": 12, "flow_duration_ms": 180000},
+        "evidence": {
+            "packets": 340,
+            "connections": 12,
+            "flow_duration_ms": 180000,
+        },
     },
     {
         "alert_id": "ALT-104",
@@ -109,7 +122,11 @@ SAMPLE_ALERTS = [
             "technique": "T1071.004",
             "technique_name": "DNS",
         },
-        "evidence": {"queries": 250, "unique_domains": 80, "packets": 500},
+        "evidence": {
+            "queries": 250,
+            "unique_domains": 80,
+            "packets": 500,
+        },
     },
     {
         "alert_id": "ALT-105",
@@ -127,7 +144,11 @@ SAMPLE_ALERTS = [
             "technique": "T1110",
             "technique_name": "Brute Force",
         },
-        "evidence": {"failed_attempts": 350, "connections": 350, "packets": 700},
+        "evidence": {
+            "failed_attempts": 350,
+            "connections": 350,
+            "packets": 700,
+        },
     },
     {
         "alert_id": "ALT-106",
@@ -145,7 +166,11 @@ SAMPLE_ALERTS = [
             "technique": "T1048",
             "technique_name": "Exfiltration Over Alternative Protocol",
         },
-        "evidence": {"bytes_transferred": 524288000, "connections": 45, "packets": 8200},
+        "evidence": {
+            "bytes_transferred": 524288000,
+            "connections": 45,
+            "packets": 8200,
+        },
     },
 ]
 
@@ -153,33 +178,70 @@ SAMPLE_ALERTS = [
 # ── HTTP helper ───────────────────────────────────────────────────────────────
 
 def post_alert(base_url: str, alert: dict) -> tuple[int, dict]:
-    """POST a single alert; returns (status_code, response_body)."""
+    """POST a single alert to the Flask backend."""
+
     url = f"{base_url}/api/alerts"
+
     payload = json.dumps(alert).encode("utf-8")
+
     req = urllib.request.Request(
         url,
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json"
+        },
         method="POST",
     )
+
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return resp.status, json.loads(resp.read())
+        with urllib.request.urlopen(
+            req,
+            timeout=10
+        ) as resp:
+            return resp.status, json.loads(
+                resp.read()
+            )
+
     except urllib.error.HTTPError as exc:
-        body = json.loads(exc.read())
+        try:
+            body = json.loads(exc.read())
+        except Exception:
+            body = {
+                "error": str(exc)
+            }
+
         return exc.code, body
+
     except urllib.error.URLError as exc:
-        print(f"[ERROR] Cannot connect to {url}: {exc.reason}")
-        print("  → Make sure the Flask server is running:  python -m app.main")
+        print(
+            f"[ERROR] Cannot connect to {url}: "
+            f"{exc.reason}"
+        )
+
+        print(
+            "Make sure the Flask server is running."
+        )
+
         sys.exit(1)
 
 
 def check_health(base_url: str) -> bool:
-    """Verify the backend is up before sending alerts."""
+    """Verify the backend is running."""
+
     try:
-        with urllib.request.urlopen(f"{base_url}/api/health", timeout=5) as resp:
-            data = json.loads(resp.read())
-            return data.get("status") == "healthy"
+        with urllib.request.urlopen(
+            f"{base_url}/api/health",
+            timeout=5
+        ) as resp:
+
+            data = json.loads(
+                resp.read()
+            )
+
+            return data.get(
+                "status"
+            ) == "healthy"
+
     except Exception:
         return False
 
@@ -187,66 +249,163 @@ def check_health(base_url: str) -> bool:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="PS-145 synthetic alert test client")
-    parser.add_argument("--url", default=BASE_URL, help="Flask backend base URL")
-    parser.add_argument("--threat", help="Only send alerts matching this threat type")
-    parser.add_argument("--delay", type=float, default=1.0, help="Seconds between alerts")
-    parser.add_argument("--loop", action="store_true", help="Loop forever (for SSE demo)")
+
+    parser = argparse.ArgumentParser(
+        description="PS-145 synthetic alert test client"
+    )
+
+    parser.add_argument(
+        "--url",
+        default=BASE_URL,
+        help="Flask backend base URL",
+    )
+
+    parser.add_argument(
+        "--threat",
+        help="Only send alerts matching this threat type",
+    )
+
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=1.0,
+        help="Seconds between alerts",
+    )
+
+    parser.add_argument(
+        "--loop",
+        action="store_true",
+        help="Loop forever for SSE demo",
+    )
+
     args = parser.parse_args()
 
-    print(f"[PS-145 Test Client]  target: {args.url}")
-    print("NOTE: This client sends SYNTHETIC alert data only. No real attacks.\n")
+    print(
+        f"[PS-145 Test Client] target: {args.url}"
+    )
 
-    # Check health first
+    print(
+        "NOTE: This client sends SYNTHETIC alert data only. "
+        "No real attacks.\n"
+    )
+
+    # Check backend health first
     if not check_health(args.url):
-        print(f"[ERROR] Backend not healthy at {args.url}/api/health")
+
+        print(
+            f"[ERROR] Backend not healthy at "
+            f"{args.url}/api/health"
+        )
+
         sys.exit(1)
-    print("[OK] Backend is healthy\n")
+
+    print(
+        "[OK] Backend is healthy\n"
+    )
 
     alerts = SAMPLE_ALERTS
+
+    # Filter by threat type if requested
     if args.threat:
-        alerts = [a for a in alerts if a["threat"].lower() == args.threat.lower()]
+
+        alerts = [
+            alert
+            for alert in alerts
+            if alert["threat"].lower()
+            == args.threat.lower()
+        ]
+
         if not alerts:
-            print(f"[WARN] No alerts found for threat: {args.threat}")
+
+            print(
+                f"[WARN] No alerts found for threat: "
+                f"{args.threat}"
+            )
+
             return
 
-    counter = 200  # unique ID offset for loop mode
+    counter = 200
 
     iteration = 0
+
     while True:
+
         iteration += 1
-        print(f"── Iteration {iteration} {'(loop mode)' if args.loop else ''} ──")
+
+        print(
+            f"── Iteration {iteration} "
+            f"{'(loop mode)' if args.loop else ''} ──"
+        )
 
         for template in alerts:
+
             alert = dict(template)
-            # Assign fresh timestamp
-            alert["timestamp"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-            # In loop mode, generate unique IDs each time
+            # Add current timestamp
+            alert["timestamp"] = (
+                datetime.now(timezone.utc)
+                .strftime("%Y-%m-%dT%H:%M:%SZ")
+            )
+
+            # Generate unique IDs in loop mode
             if args.loop and iteration > 1:
-                counter += 1
-                alert["alert_id"] = f"ALT-{counter}"
 
-            status, body = post_alert(args.url, alert)
+                counter += 1
+
+                alert["alert_id"] = (
+                    f"ALT-{counter}"
+                )
+
+            status, body = post_alert(
+                args.url,
+                alert
+            )
 
             if status == 201:
-                print(f"  [201 CREATED]  {alert['alert_id']:10s}  {alert['severity']:8s}  {alert['threat']}")
-            elif status == 409:
-                print(f"  [409 SKIP]     {alert['alert_id']:10s}  (duplicate — already exists)")
-            else:
-                print(f"  [{status} ERROR]  {alert['alert_id']:10s}  {body}")
 
-            time.sleep(args.delay)
+                print(
+                    f"  [201 CREATED] "
+                    f"{alert['alert_id']:10s} "
+                    f"{alert['severity']:8s} "
+                    f"{alert['threat']}"
+                )
+
+            elif status == 409:
+
+                print(
+                    f"  [409 SKIP] "
+                    f"{alert['alert_id']:10s} "
+                    f"(duplicate — already exists)"
+                )
+
+            else:
+
+                print(
+                    f"  [{status} ERROR] "
+                    f"{alert['alert_id']:10s} "
+                    f"{body}"
+                )
+
+            time.sleep(
+                args.delay
+            )
 
         if not args.loop:
             break
 
-        # Small extra pause between loop iterations
         time.sleep(2.0)
 
-    print("\n[Done] All alerts sent.")
-    print(f"  Check dashboard: {args.url}/api/alerts")
-    print(f"  Check stats:     {args.url}/api/stats")
+    print(
+        "\n[Done] All alerts sent."
+    )
+
+    print(
+        f"  Check dashboard: {args.url}/api/alerts"
+    )
+
+    print(
+        f"  Check stats:     {args.url}/api/stats"
+    )
 
 
 if __name__ == "__main__":
