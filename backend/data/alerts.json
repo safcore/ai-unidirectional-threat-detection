@@ -1132,5 +1132,768 @@
         }
       ]
     }
+  },
+  {
+    "alert_id": "ALT-1009",
+    "timestamp": "2026-09-09T18:52:18.911630+00:00",
+    "threat": "Dns Tunnel",
+    "severity": "HIGH",
+    "confidence": 0.95,
+    "source_ip": "192.168.1.42",
+    "destination_ip": "127.0.0.1",
+    "source_port": 53535,
+    "destination_port": 53,
+    "protocol": "UDP",
+    "mitre": {
+      "tactic": "Command and Control",
+      "technique": "T1071",
+      "technique_name": "Application Layer Protocol: DNS"
+    },
+    "evidence": {
+      "decision_reason": "DNS Tunneling Detected: High outbound payload volume over DNS port 53. Signals: High outbound-to-inbound byte ratio (50.0:1); High outbound payload volume over DNS port 53 (DNS Tunneling indicator)",
+      "anomaly_score": 0.2745,
+      "classifications": {
+        "m3": {
+          "threat_class": "BENIGN",
+          "confidence": 0.92,
+          "probabilities": {
+            "BENIGN": 0.92,
+            "DDOS": 0.02,
+            "PORT_SCAN": 0.06
+          },
+          "anomaly_score": 0.0
+        },
+        "m4": {
+          "threat_class": "BENIGN",
+          "confidence": 0.83,
+          "probabilities": {
+            "BENIGN": 0.83,
+            "BRUTE_FORCE": 0.01,
+            "DDOS": 0.0,
+            "DOS": 0.12,
+            "OTHER_ATTACK": 0.0,
+            "PORT_SCAN": 0.03,
+            "WEB_ATTACK": 0.01
+          },
+          "anomaly_score": 0.2745
+        }
+      },
+      "investigation": {
+        "summary": "Detected 1 correlated security event(s) originating from host '192.168.1.42' with primary classification 'DNS_TUNNEL'.",
+        "why_malicious": "Supervised ML model predicted 'DNS_TUNNEL' with confidence 0.95 and Isolation Forest anomaly severity 0.27.",
+        "why_risk_level": "Assigned explainable engineering risk score 56.0/100 (MEDIUM) due to Risk score 56.0/100 (MEDIUM) computed from ML confidence (95.0), anomaly severity (27.4), alert severity (80.0), threat intel reputation (20.0), and event correlation depth (25.0).",
+        "evidence_list": [
+          "Event 1: DNS_TUNNEL (MALICIOUS) at 2026-09-09T18:52:18.911630+00:00 [Conf: 0.95, Anomaly: 0.27]"
+        ],
+        "mitre_context": [
+          "Technique T1071 (Application Layer Protocol: DNS - Command and Control): Observed high-entropy or tunneling patterns in DNS communication. [Confidence: 0.85]"
+        ],
+        "intel_context": [
+          "Threat intelligence enrichment provides additional contextual evidence: Extracted 3 IOC(s) with overall reputation 'UNKNOWN'."
+        ]
+      },
+      "iocs": [
+        {
+          "ioc_type": "IPv4",
+          "value": "192.168.1.42",
+          "first_seen": "2026-09-09T18:52:18.911630+00:00",
+          "last_seen": "2026-09-09T18:52:18.911630+00:00",
+          "source_event_id": "cea45bf8-42d8-43a7-9791-deed46c56e4c",
+          "confidence": 0.95,
+          "intel": {
+            "ip": "192.168.1.42",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "IPv4",
+          "value": "127.0.0.1",
+          "first_seen": "2026-09-09T18:52:18.911630+00:00",
+          "last_seen": "2026-09-09T18:52:18.911630+00:00",
+          "source_event_id": "cea45bf8-42d8-43a7-9791-deed46c56e4c",
+          "confidence": 0.95,
+          "intel": {
+            "ip": "127.0.0.1",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "Port",
+          "value": "53",
+          "first_seen": "2026-09-09T18:52:18.911630+00:00",
+          "last_seen": "2026-09-09T18:52:18.911630+00:00",
+          "source_event_id": "cea45bf8-42d8-43a7-9791-deed46c56e4c",
+          "confidence": 0.95,
+          "intel": {
+            "value": "53",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_applicable",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "alert_id": "ALT-1010",
+    "timestamp": "2026-09-09T18:52:19.067319+00:00",
+    "threat": "DDoS",
+    "severity": "CRITICAL",
+    "confidence": 0.98,
+    "source_ip": "192.168.1.105",
+    "destination_ip": "127.0.0.1",
+    "source_port": 54321,
+    "destination_port": 80,
+    "protocol": "TCP",
+    "mitre": {
+      "tactic": "Impact",
+      "technique": "T1498",
+      "technique_name": "Network Denial of Service"
+    },
+    "evidence": {
+      "decision_reason": "Volumetric SYN Flood Detected: High SYN rate (100 SYN flags, 10000.0 pkts/s) targeting port 80 with zero ACK response.",
+      "anomaly_score": 0.36,
+      "classifications": {
+        "m3": {
+          "threat_class": "BENIGN",
+          "confidence": 0.96,
+          "probabilities": {
+            "BENIGN": 0.96,
+            "DDOS": 0.03,
+            "PORT_SCAN": 0.01
+          },
+          "anomaly_score": 0.0
+        },
+        "m4": {
+          "threat_class": "BENIGN",
+          "confidence": 0.72,
+          "probabilities": {
+            "BENIGN": 0.72,
+            "BRUTE_FORCE": 0.05,
+            "DDOS": 0.01,
+            "DOS": 0.14,
+            "OTHER_ATTACK": 0.0,
+            "PORT_SCAN": 0.06,
+            "WEB_ATTACK": 0.02
+          },
+          "anomaly_score": 0.36
+        }
+      },
+      "investigation": {
+        "summary": "Detected 1 correlated security event(s) originating from host '192.168.1.105' with primary classification 'DDOS'.",
+        "why_malicious": "Supervised ML model predicted 'DDOS' with confidence 0.98 and Isolation Forest anomaly severity 0.36.",
+        "why_risk_level": "Assigned explainable engineering risk score 63.5/100 (HIGH) due to Risk score 63.5/100 (HIGH) computed from ML confidence (98.0), anomaly severity (36.0), alert severity (100.0), threat intel reputation (20.0), and event correlation depth (25.0).",
+        "evidence_list": [
+          "Event 1: DDOS (MALICIOUS) at 2026-09-09T18:52:19.067319+00:00 [Conf: 0.98, Anomaly: 0.36]"
+        ],
+        "mitre_context": [
+          "Technique T1498 (Network Denial of Service - Impact): Volumetric or state-exhaustion network flow traffic designed to disrupt service. [Confidence: 0.93]"
+        ],
+        "intel_context": [
+          "Threat intelligence enrichment provides additional contextual evidence: Extracted 3 IOC(s) with overall reputation 'UNKNOWN'."
+        ]
+      },
+      "iocs": [
+        {
+          "ioc_type": "IPv4",
+          "value": "192.168.1.105",
+          "first_seen": "2026-09-09T18:52:19.067319+00:00",
+          "last_seen": "2026-09-09T18:52:19.067319+00:00",
+          "source_event_id": "66bc01e1-e115-458e-805a-39d50dc63b52",
+          "confidence": 0.98,
+          "intel": {
+            "ip": "192.168.1.105",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "IPv4",
+          "value": "127.0.0.1",
+          "first_seen": "2026-09-09T18:52:19.067319+00:00",
+          "last_seen": "2026-09-09T18:52:19.067319+00:00",
+          "source_event_id": "66bc01e1-e115-458e-805a-39d50dc63b52",
+          "confidence": 0.98,
+          "intel": {
+            "ip": "127.0.0.1",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "Port",
+          "value": "80",
+          "first_seen": "2026-09-09T18:52:19.067319+00:00",
+          "last_seen": "2026-09-09T18:52:19.067319+00:00",
+          "source_event_id": "66bc01e1-e115-458e-805a-39d50dc63b52",
+          "confidence": 0.98,
+          "intel": {
+            "value": "80",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_applicable",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "alert_id": "ALT-1011",
+    "timestamp": "2026-09-09T18:52:19.174400+00:00",
+    "threat": "Dns Tunnel",
+    "severity": "HIGH",
+    "confidence": 0.95,
+    "source_ip": "192.168.1.42",
+    "destination_ip": "8.8.8.8",
+    "source_port": 53535,
+    "destination_port": 53,
+    "protocol": "UDP",
+    "mitre": {
+      "tactic": "Command and Control",
+      "technique": "T1071",
+      "technique_name": "Application Layer Protocol: DNS"
+    },
+    "evidence": {
+      "decision_reason": "DNS Tunneling Detected: High outbound payload volume over DNS port 53. Signals: High outbound-to-inbound byte ratio (50.0:1); High outbound payload volume over DNS port 53 (DNS Tunneling indicator)",
+      "anomaly_score": 0.2745,
+      "classifications": {
+        "m3": {
+          "threat_class": "BENIGN",
+          "confidence": 0.92,
+          "probabilities": {
+            "BENIGN": 0.92,
+            "DDOS": 0.02,
+            "PORT_SCAN": 0.06
+          },
+          "anomaly_score": 0.0
+        },
+        "m4": {
+          "threat_class": "BENIGN",
+          "confidence": 0.83,
+          "probabilities": {
+            "BENIGN": 0.83,
+            "BRUTE_FORCE": 0.01,
+            "DDOS": 0.0,
+            "DOS": 0.12,
+            "OTHER_ATTACK": 0.0,
+            "PORT_SCAN": 0.03,
+            "WEB_ATTACK": 0.01
+          },
+          "anomaly_score": 0.2745
+        }
+      },
+      "investigation": {
+        "summary": "Detected 2 correlated security event(s) originating from host '192.168.1.42' with primary classification 'DNS_TUNNEL'.",
+        "why_malicious": "Supervised ML model predicted 'DNS_TUNNEL' with confidence 0.95 and Isolation Forest anomaly severity 0.27.",
+        "why_risk_level": "Assigned explainable engineering risk score 59.7/100 (MEDIUM) due to Risk score 59.7/100 (MEDIUM) computed from ML confidence (95.0), anomaly severity (27.4), alert severity (80.0), threat intel reputation (20.0), and event correlation depth (50.0).",
+        "evidence_list": [
+          "Event 1: DNS_TUNNEL (MALICIOUS) at 2026-09-09T18:52:18.911630+00:00 [Conf: 0.95, Anomaly: 0.27]",
+          "Event 2: DNS_TUNNEL (MALICIOUS) at 2026-09-09T18:52:19.174400+00:00 [Conf: 0.95, Anomaly: 0.27]"
+        ],
+        "mitre_context": [
+          "Technique T1071 (Application Layer Protocol: DNS - Command and Control): Observed high-entropy or tunneling patterns in DNS communication. [Confidence: 0.85]"
+        ],
+        "intel_context": [
+          "Threat intelligence enrichment provides additional contextual evidence: Extracted 3 IOC(s) with overall reputation 'UNKNOWN'."
+        ]
+      },
+      "iocs": [
+        {
+          "ioc_type": "IPv4",
+          "value": "192.168.1.42",
+          "first_seen": "2026-09-09T18:52:19.174400+00:00",
+          "last_seen": "2026-09-09T18:52:19.174400+00:00",
+          "source_event_id": "628d9e2c-0ceb-4d26-8615-6d7e23b68fa8",
+          "confidence": 0.95,
+          "intel": {
+            "ip": "192.168.1.42",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "IPv4",
+          "value": "8.8.8.8",
+          "first_seen": "2026-09-09T18:52:19.174400+00:00",
+          "last_seen": "2026-09-09T18:52:19.174400+00:00",
+          "source_event_id": "628d9e2c-0ceb-4d26-8615-6d7e23b68fa8",
+          "confidence": 0.95,
+          "intel": {
+            "ip": "8.8.8.8",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "Port",
+          "value": "53",
+          "first_seen": "2026-09-09T18:52:19.174400+00:00",
+          "last_seen": "2026-09-09T18:52:19.174400+00:00",
+          "source_event_id": "628d9e2c-0ceb-4d26-8615-6d7e23b68fa8",
+          "confidence": 0.95,
+          "intel": {
+            "value": "53",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_applicable",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "alert_id": "ALT-1012",
+    "timestamp": "2026-09-09T18:52:19.200096+00:00",
+    "threat": "Port Scan",
+    "severity": "HIGH",
+    "confidence": 0.96,
+    "source_ip": "172.16.0.99",
+    "destination_ip": "127.0.0.1",
+    "source_port": 49152,
+    "destination_port": 80,
+    "protocol": "TCP",
+    "mitre": {
+      "tactic": "Discovery",
+      "technique": "T1046",
+      "technique_name": "Network Service Scanning"
+    },
+    "evidence": {
+      "decision_reason": "Reconnaissance Port Scan Detected: High-frequency SYN probes targeting port range without application handshake.",
+      "anomaly_score": 0.2282,
+      "classifications": {
+        "m3": {
+          "threat_class": "BENIGN",
+          "confidence": 0.9,
+          "probabilities": {
+            "BENIGN": 0.9,
+            "DDOS": 0.07,
+            "PORT_SCAN": 0.03
+          },
+          "anomaly_score": 0.0
+        },
+        "m4": {
+          "threat_class": "BENIGN",
+          "confidence": 0.72,
+          "probabilities": {
+            "BENIGN": 0.72,
+            "BRUTE_FORCE": 0.02,
+            "DDOS": 0.05,
+            "DOS": 0.1,
+            "OTHER_ATTACK": 0.0,
+            "PORT_SCAN": 0.09,
+            "WEB_ATTACK": 0.02
+          },
+          "anomaly_score": 0.2282
+        }
+      },
+      "investigation": {
+        "summary": "Detected 1 correlated security event(s) originating from host '172.16.0.99' with primary classification 'PORT_SCAN'.",
+        "why_malicious": "Supervised ML model predicted 'PORT_SCAN' with confidence 0.96 and Isolation Forest anomaly severity 0.23.",
+        "why_risk_level": "Assigned explainable engineering risk score 55.3/100 (MEDIUM) due to Risk score 55.3/100 (MEDIUM) computed from ML confidence (96.0), anomaly severity (22.8), alert severity (80.0), threat intel reputation (20.0), and event correlation depth (25.0).",
+        "evidence_list": [
+          "Event 1: PORT_SCAN (MALICIOUS) at 2026-09-09T18:52:19.200096+00:00 [Conf: 0.96, Anomaly: 0.23]"
+        ],
+        "mitre_context": [
+          "Technique T1046 (Network Service Scanning - Discovery): Observed network flow pattern characteristic of multi-port discovery scanning. [Confidence: 0.91]"
+        ],
+        "intel_context": [
+          "Threat intelligence enrichment provides additional contextual evidence: Extracted 3 IOC(s) with overall reputation 'UNKNOWN'."
+        ]
+      },
+      "iocs": [
+        {
+          "ioc_type": "IPv4",
+          "value": "172.16.0.99",
+          "first_seen": "2026-09-09T18:52:19.200096+00:00",
+          "last_seen": "2026-09-09T18:52:19.200096+00:00",
+          "source_event_id": "82184729-4da4-4cb8-a32b-64e153ec0dd4",
+          "confidence": 0.96,
+          "intel": {
+            "ip": "172.16.0.99",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "IPv4",
+          "value": "127.0.0.1",
+          "first_seen": "2026-09-09T18:52:19.200096+00:00",
+          "last_seen": "2026-09-09T18:52:19.200096+00:00",
+          "source_event_id": "82184729-4da4-4cb8-a32b-64e153ec0dd4",
+          "confidence": 0.96,
+          "intel": {
+            "ip": "127.0.0.1",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "Port",
+          "value": "80",
+          "first_seen": "2026-09-09T18:52:19.200096+00:00",
+          "last_seen": "2026-09-09T18:52:19.200096+00:00",
+          "source_event_id": "82184729-4da4-4cb8-a32b-64e153ec0dd4",
+          "confidence": 0.96,
+          "intel": {
+            "value": "80",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_applicable",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "alert_id": "ALT-1013",
+    "timestamp": "2026-09-09T18:52:19.203677+00:00",
+    "threat": "DDoS",
+    "severity": "CRITICAL",
+    "confidence": 0.98,
+    "source_ip": "192.168.1.105",
+    "destination_ip": "127.0.0.1",
+    "source_port": 54321,
+    "destination_port": 80,
+    "protocol": "TCP",
+    "mitre": {
+      "tactic": "Impact",
+      "technique": "T1498",
+      "technique_name": "Network Denial of Service"
+    },
+    "evidence": {
+      "decision_reason": "Volumetric SYN Flood Detected: High SYN rate (100 SYN flags, 5000.0 pkts/s) targeting port 80 with zero ACK response.",
+      "anomaly_score": 0.3588,
+      "classifications": {
+        "m3": {
+          "threat_class": "BENIGN",
+          "confidence": 0.96,
+          "probabilities": {
+            "BENIGN": 0.96,
+            "DDOS": 0.03,
+            "PORT_SCAN": 0.01
+          },
+          "anomaly_score": 0.0
+        },
+        "m4": {
+          "threat_class": "BENIGN",
+          "confidence": 0.72,
+          "probabilities": {
+            "BENIGN": 0.72,
+            "BRUTE_FORCE": 0.05,
+            "DDOS": 0.01,
+            "DOS": 0.14,
+            "OTHER_ATTACK": 0.0,
+            "PORT_SCAN": 0.06,
+            "WEB_ATTACK": 0.02
+          },
+          "anomaly_score": 0.3588
+        }
+      },
+      "investigation": {
+        "summary": "Detected 2 correlated security event(s) originating from host '192.168.1.105' with primary classification 'DDOS'.",
+        "why_malicious": "Supervised ML model predicted 'DDOS' with confidence 0.98 and Isolation Forest anomaly severity 0.36.",
+        "why_risk_level": "Assigned explainable engineering risk score 67.2/100 (HIGH) due to Risk score 67.2/100 (HIGH) computed from ML confidence (98.0), anomaly severity (35.9), alert severity (100.0), threat intel reputation (20.0), and event correlation depth (50.0).",
+        "evidence_list": [
+          "Event 1: DDOS (MALICIOUS) at 2026-09-09T18:52:19.067319+00:00 [Conf: 0.98, Anomaly: 0.36]",
+          "Event 2: DDOS (MALICIOUS) at 2026-09-09T18:52:19.203677+00:00 [Conf: 0.98, Anomaly: 0.36]"
+        ],
+        "mitre_context": [
+          "Technique T1498 (Network Denial of Service - Impact): Volumetric or state-exhaustion network flow traffic designed to disrupt service. [Confidence: 0.93]"
+        ],
+        "intel_context": [
+          "Threat intelligence enrichment provides additional contextual evidence: Extracted 3 IOC(s) with overall reputation 'UNKNOWN'."
+        ]
+      },
+      "iocs": [
+        {
+          "ioc_type": "IPv4",
+          "value": "192.168.1.105",
+          "first_seen": "2026-09-09T18:52:19.203677+00:00",
+          "last_seen": "2026-09-09T18:52:19.203677+00:00",
+          "source_event_id": "c4b78f20-5934-46f5-980f-793ae145b788",
+          "confidence": 0.98,
+          "intel": {
+            "ip": "192.168.1.105",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "IPv4",
+          "value": "127.0.0.1",
+          "first_seen": "2026-09-09T18:52:19.203677+00:00",
+          "last_seen": "2026-09-09T18:52:19.203677+00:00",
+          "source_event_id": "c4b78f20-5934-46f5-980f-793ae145b788",
+          "confidence": 0.98,
+          "intel": {
+            "ip": "127.0.0.1",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "Port",
+          "value": "80",
+          "first_seen": "2026-09-09T18:52:19.203677+00:00",
+          "last_seen": "2026-09-09T18:52:19.203677+00:00",
+          "source_event_id": "c4b78f20-5934-46f5-980f-793ae145b788",
+          "confidence": 0.98,
+          "intel": {
+            "value": "80",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_applicable",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "alert_id": "ALT-1014",
+    "timestamp": "2026-09-09T18:52:19.330452+00:00",
+    "threat": "DDoS",
+    "severity": "CRITICAL",
+    "confidence": 0.98,
+    "source_ip": "192.168.1.105",
+    "destination_ip": "127.0.0.1",
+    "source_port": 54321,
+    "destination_port": 80,
+    "protocol": "TCP",
+    "mitre": {
+      "tactic": "Impact",
+      "technique": "T1498",
+      "technique_name": "Network Denial of Service"
+    },
+    "evidence": {
+      "decision_reason": "Volumetric SYN Flood Detected: High SYN rate (1000 SYN flags, 10000.0 pkts/s) targeting port 80 with zero ACK response.",
+      "anomaly_score": 0.4361,
+      "classifications": {
+        "m3": {
+          "threat_class": "BENIGN",
+          "confidence": 0.96,
+          "probabilities": {
+            "BENIGN": 0.96,
+            "DDOS": 0.03,
+            "PORT_SCAN": 0.01
+          },
+          "anomaly_score": 0.0
+        },
+        "m4": {
+          "threat_class": "BENIGN",
+          "confidence": 0.72,
+          "probabilities": {
+            "BENIGN": 0.72,
+            "BRUTE_FORCE": 0.05,
+            "DDOS": 0.01,
+            "DOS": 0.13,
+            "OTHER_ATTACK": 0.0,
+            "PORT_SCAN": 0.06,
+            "WEB_ATTACK": 0.03
+          },
+          "anomaly_score": 0.4361
+        }
+      },
+      "investigation": {
+        "summary": "Detected 3 correlated security event(s) originating from host '192.168.1.105' with primary classification 'DDOS'.",
+        "why_malicious": "Supervised ML model predicted 'DDOS' with confidence 0.98 and Isolation Forest anomaly severity 0.36.",
+        "why_risk_level": "Assigned explainable engineering risk score 72.5/100 (HIGH) due to Risk score 72.5/100 (HIGH) computed from ML confidence (98.0), anomaly severity (43.6), alert severity (100.0), threat intel reputation (20.0), and event correlation depth (75.0).",
+        "evidence_list": [
+          "Event 1: DDOS (MALICIOUS) at 2026-09-09T18:52:19.067319+00:00 [Conf: 0.98, Anomaly: 0.36]",
+          "Event 2: DDOS (MALICIOUS) at 2026-09-09T18:52:19.203677+00:00 [Conf: 0.98, Anomaly: 0.36]",
+          "Event 3: DDOS (MALICIOUS) at 2026-09-09T18:52:19.330452+00:00 [Conf: 0.98, Anomaly: 0.44]"
+        ],
+        "mitre_context": [
+          "Technique T1498 (Network Denial of Service - Impact): Volumetric or state-exhaustion network flow traffic designed to disrupt service. [Confidence: 0.93]"
+        ],
+        "intel_context": [
+          "Threat intelligence enrichment provides additional contextual evidence: Extracted 3 IOC(s) with overall reputation 'UNKNOWN'."
+        ]
+      },
+      "iocs": [
+        {
+          "ioc_type": "IPv4",
+          "value": "192.168.1.105",
+          "first_seen": "2026-09-09T18:52:19.330452+00:00",
+          "last_seen": "2026-09-09T18:52:19.330452+00:00",
+          "source_event_id": "76356568-7a3c-47f0-9339-0f925f20e017",
+          "confidence": 0.98,
+          "intel": {
+            "ip": "192.168.1.105",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "IPv4",
+          "value": "127.0.0.1",
+          "first_seen": "2026-09-09T18:52:19.330452+00:00",
+          "last_seen": "2026-09-09T18:52:19.330452+00:00",
+          "source_event_id": "76356568-7a3c-47f0-9339-0f925f20e017",
+          "confidence": 0.98,
+          "intel": {
+            "ip": "127.0.0.1",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "Port",
+          "value": "80",
+          "first_seen": "2026-09-09T18:52:19.330452+00:00",
+          "last_seen": "2026-09-09T18:52:19.330452+00:00",
+          "source_event_id": "76356568-7a3c-47f0-9339-0f925f20e017",
+          "confidence": 0.98,
+          "intel": {
+            "value": "80",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_applicable",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "alert_id": "ALT-1015",
+    "timestamp": "2026-09-09T18:52:19.607753+00:00",
+    "threat": "DDoS",
+    "severity": "CRITICAL",
+    "confidence": 0.98,
+    "source_ip": "192.168.1.105",
+    "destination_ip": "127.0.0.1",
+    "source_port": 54321,
+    "destination_port": 80,
+    "protocol": "TCP",
+    "mitre": {
+      "tactic": "Impact",
+      "technique": "T1498",
+      "technique_name": "Network Denial of Service"
+    },
+    "evidence": {
+      "decision_reason": "Volumetric SYN Flood Detected: High SYN rate (1000 SYN flags, 10000.0 pkts/s) targeting port 80 with zero ACK response.",
+      "anomaly_score": 0.4361,
+      "classifications": {
+        "m3": {
+          "threat_class": "BENIGN",
+          "confidence": 0.96,
+          "probabilities": {
+            "BENIGN": 0.96,
+            "DDOS": 0.03,
+            "PORT_SCAN": 0.01
+          },
+          "anomaly_score": 0.0
+        },
+        "m4": {
+          "threat_class": "BENIGN",
+          "confidence": 0.72,
+          "probabilities": {
+            "BENIGN": 0.72,
+            "BRUTE_FORCE": 0.05,
+            "DDOS": 0.01,
+            "DOS": 0.13,
+            "OTHER_ATTACK": 0.0,
+            "PORT_SCAN": 0.06,
+            "WEB_ATTACK": 0.03
+          },
+          "anomaly_score": 0.4361
+        }
+      },
+      "investigation": {
+        "summary": "Detected 4 correlated security event(s) originating from host '192.168.1.105' with primary classification 'DDOS'.",
+        "why_malicious": "Supervised ML model predicted 'DDOS' with confidence 0.98 and Isolation Forest anomaly severity 0.36.",
+        "why_risk_level": "Assigned explainable engineering risk score 76.2/100 (HIGH) due to Risk score 76.2/100 (HIGH) computed from ML confidence (98.0), anomaly severity (43.6), alert severity (100.0), threat intel reputation (20.0), and event correlation depth (100.0).",
+        "evidence_list": [
+          "Event 1: DDOS (MALICIOUS) at 2026-09-09T18:52:19.067319+00:00 [Conf: 0.98, Anomaly: 0.36]",
+          "Event 2: DDOS (MALICIOUS) at 2026-09-09T18:52:19.203677+00:00 [Conf: 0.98, Anomaly: 0.36]",
+          "Event 3: DDOS (MALICIOUS) at 2026-09-09T18:52:19.330452+00:00 [Conf: 0.98, Anomaly: 0.44]",
+          "Event 4: DDOS (MALICIOUS) at 2026-09-09T18:52:19.607753+00:00 [Conf: 0.98, Anomaly: 0.44]"
+        ],
+        "mitre_context": [
+          "Technique T1498 (Network Denial of Service - Impact): Volumetric or state-exhaustion network flow traffic designed to disrupt service. [Confidence: 0.93]"
+        ],
+        "intel_context": [
+          "Threat intelligence enrichment provides additional contextual evidence: Extracted 3 IOC(s) with overall reputation 'UNKNOWN'."
+        ]
+      },
+      "iocs": [
+        {
+          "ioc_type": "IPv4",
+          "value": "192.168.1.105",
+          "first_seen": "2026-09-09T18:52:19.607753+00:00",
+          "last_seen": "2026-09-09T18:52:19.607753+00:00",
+          "source_event_id": "78d4eb10-641d-4a39-aec3-3fe9700a9ef7",
+          "confidence": 0.98,
+          "intel": {
+            "ip": "192.168.1.105",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "IPv4",
+          "value": "127.0.0.1",
+          "first_seen": "2026-09-09T18:52:19.607753+00:00",
+          "last_seen": "2026-09-09T18:52:19.607753+00:00",
+          "source_event_id": "78d4eb10-641d-4a39-aec3-3fe9700a9ef7",
+          "confidence": 0.98,
+          "intel": {
+            "ip": "127.0.0.1",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_found",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        },
+        {
+          "ioc_type": "Port",
+          "value": "80",
+          "first_seen": "2026-09-09T18:52:19.607753+00:00",
+          "last_seen": "2026-09-09T18:52:19.607753+00:00",
+          "source_event_id": "78d4eb10-641d-4a39-aec3-3fe9700a9ef7",
+          "confidence": 0.98,
+          "intel": {
+            "value": "80",
+            "reputation": "UNKNOWN",
+            "confidence": 0.0,
+            "status": "not_applicable",
+            "source": "LOCAL DEMONSTRATION INTELLIGENCE"
+          }
+        }
+      ]
+    }
   }
 ]
