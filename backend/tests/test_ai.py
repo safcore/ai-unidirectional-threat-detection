@@ -512,7 +512,7 @@ Hope this helps the SOC team!"""
         call_count = [0]
         def mock_llm_call(prompt):
             call_count[0] += 1
-            time.sleep(0.1)
+            time.sleep(0.3)
             return copy.deepcopy(MOCK_AI_ANALYSIS), None
 
         with patch.object(svc, "_call_llm", side_effect=mock_llm_call):

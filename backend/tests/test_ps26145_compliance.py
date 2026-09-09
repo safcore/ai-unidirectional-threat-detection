@@ -21,16 +21,18 @@ from backend.app.m4_integration import process_detection
 from backend.app.attack_service import attack_service, VALID_ATTACK_TYPES
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-TEST_CSV_PATH = (
-    PROJECT_ROOT
-    / "teamwork"
-    / "_inspection"
-    / "SIH PS145"
-    / "AaYuushman's work"
-    / "ml"
-    / "data"
-    / "test.csv"
-)
+TEST_CSV_PATH = PROJECT_ROOT / "data" / "datasets" / "test.csv"
+if not TEST_CSV_PATH.exists():
+    TEST_CSV_PATH = (
+        PROJECT_ROOT
+        / "teamwork"
+        / "_inspection"
+        / "SIH PS145"
+        / "AaYuushman's work"
+        / "ml"
+        / "data"
+        / "test.csv"
+    )
 
 
 @pytest.fixture

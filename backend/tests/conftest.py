@@ -7,10 +7,13 @@ AI calls are always mocked — tests NEVER require a real NVIDIA API key.
 from __future__ import annotations
 
 import os
-import pytest
 import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import pytest
+_backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+_project_root = os.path.dirname(_backend_dir)
+for _p in (_project_root, os.path.join(_project_root, "scripts"), _backend_dir):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 import app as app_module
 from app import create_app, alert_store as _default_store

@@ -676,9 +676,16 @@ def replay_pcap():
     """Replay a real PCAP file through M1->M2->M3/M4->M5 pipeline and record flows."""
     data = request.get_json(silent=True) or {}
     target_name = os.path.basename(str(data.get("pcap_file") or data.get("filename") or "test_capture.pcap").strip())
-    pcap_path = Path(__file__).resolve().parents[2] / "data" / target_name
-    if not pcap_path.exists():
-        pcap_path = Path(__file__).resolve().parents[2] / "data" / "test_capture.pcap"
+    project_root = Path(__file__).resolve().parents[2]
+    candidate = project_root / "data" / "pcaps" / target_name
+    if candidate.exists():
+        pcap_path = candidate
+    elif (project_root / "data" / target_name).exists():
+        pcap_path = project_root / "data" / target_name
+    elif (project_root / "data" / "pcaps" / "test_capture.pcap").exists():
+        pcap_path = project_root / "data" / "pcaps" / "test_capture.pcap"
+    else:
+        pcap_path = project_root / "data" / "test_capture.pcap"
 
     if not pcap_path.exists():
         return jsonify({"error": "PCAP capture file not found on disk"}), 404

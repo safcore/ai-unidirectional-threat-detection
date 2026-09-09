@@ -5,7 +5,10 @@ from __future__ import annotations
 
 import pytest
 from pathlib import Path
-from run_live_pipeline import run_pipeline
+try:
+    from scripts.run_live_pipeline import run_pipeline
+except ImportError:
+    from run_live_pipeline import run_pipeline
 
 
 class TestPipelineOrchestrator:
