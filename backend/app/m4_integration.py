@@ -66,27 +66,25 @@ def m4_available() -> bool:
 def _next_alert_id() -> str:
     global _alert_counter
     with _alert_counter_lock:
-        existing_alerts = []
-        try:
-            from app import alert_store as _store
-            existing_alerts = _store.get_all()
-        except Exception:
+        if _alert_counter == 0:
+            existing_alerts = []
             try:
-                from backend.app import alert_store as _store
+                from app import alert_store as _store
                 existing_alerts = _store.get_all()
             except Exception:
-                pass
+                try:
+                    from backend.app import alert_store as _store
+                    existing_alerts = _store.get_all()
+                except Exception:
+                    pass
 
-        existing_nums = set()
-        for a in existing_alerts:
-            aid = str(a.get("alert_id", ""))
-            m = re.match(r"^ALT-(\d+)$", aid)
-            if m:
-                existing_nums.add(int(m.group(1)))
+            for a in existing_alerts:
+                aid = str(a.get("alert_id", ""))
+                m = re.match(r"^ALT-(\d+)$", aid)
+                if m:
+                    _alert_counter = max(_alert_counter, int(m.group(1)))
 
         _alert_counter += 1
-        while _alert_counter in existing_nums:
-            _alert_counter += 1
         return f"ALT-{_alert_counter}"
 
 
@@ -149,3 +147,17 @@ def process_detection(features: dict[str, Any], metadata: dict[str, Any]) -> tup
     incident = get_incident_manager().process_event(event)
     alert = event_to_alert(event, incident)
     return event, incident, alert
+
+
+def process_detection_batch(
+    features_list: list[dict[str, Any]], metadata_list: list[dict[str, Any]]
+) -> list[tuple[dict[str, Any], Any, dict[str, Any]]]:
+    events = get_detection_engine().process_batch(features_list, metadata_list=metadata_list)
+    results = []
+    inc_mgr = get_incident_manager()
+    for ev, meta in zip(events, metadata_list):
+        ev["metadata"] = meta
+        inc = inc_mgr.process_event(ev)
+        alert = event_to_alert(ev, inc)
+        results.append((ev, inc, alert))
+    return results

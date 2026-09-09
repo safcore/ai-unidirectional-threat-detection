@@ -40,7 +40,8 @@ class TimelineBuilder:
         """
         Build chronological timeline entries from an event list.
         """
-        sorted_events = sorted(events, key=lambda e: str(e.get("timestamp", "")))
+        target_events = events[-50:] if len(events) > 50 else events
+        sorted_events = sorted(target_events, key=lambda e: str(e.get("timestamp", "")))
         entries: List[TimelineEntry] = []
 
         for idx, evt in enumerate(sorted_events):

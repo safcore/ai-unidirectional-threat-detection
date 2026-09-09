@@ -105,6 +105,12 @@ class Predictor:
         else:
             anom_scores = [0.0] * len(df_clean)
 
+        m3_batch_res = (
+            self.m3_predictor.predict_batch(df_clean)
+            if hasattr(self.m3_predictor, "predict_batch")
+            else None
+        )
+
         results = []
         for i in range(len(df_clean)):
             m4_class = str(preds[i])
@@ -124,9 +130,12 @@ class Predictor:
                 "anomaly_score": m4_anomaly,
             }
 
-            # Run parallel M3 inference on the exact same feature dictionary
-            row_dict = df_clean.iloc[i].to_dict()
-            m3_res = self.m3_predictor.predict(row_dict)
+            # Use parallel M3 batch inference result
+            if m3_batch_res is not None and i < len(m3_batch_res):
+                m3_res = m3_batch_res[i]
+            else:
+                row_dict = df_clean.iloc[i].to_dict()
+                m3_res = self.m3_predictor.predict(row_dict)
 
             if m3_res is None:
                 m3_res = {

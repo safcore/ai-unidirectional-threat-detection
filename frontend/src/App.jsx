@@ -2,16 +2,20 @@ import {
   useEffect,
   useMemo,
   useState,
+  useCallback,
 } from 'react'
 
 import './App.css'
 
 import Header from './components/Header'
+import RealTrafficAnalysis from './components/RealTrafficAnalysis'
 import StatCard from './components/StatCard'
 import ThreatActivity from './components/ThreatActivity'
 import ThreatDistribution from './components/ThreatDistribution'
 import AlertTable from './components/AlertTable'
+import AttackSimulator from './components/AttackSimulator'
 import AlertDetails from './components/AlertDetails'
+import ToastNotification from './components/ToastNotification'
 
 import {
   fetchAlerts,
@@ -19,337 +23,198 @@ import {
   connectToAlertStream,
 } from './services/alertService'
 
-
 function App() {
-  const [alerts, setAlerts] =
-    useState([])
+  const [alerts, setAlerts] = useState([])
+  const [selectedAlert, setSelectedAlert] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [streamState, setStreamState] = useState('connected')
+  const [backendStats, setBackendStats] = useState(null)
+  const [highlightAlertId, setHighlightAlertId] = useState(null)
+  const [currentToast, setCurrentToast] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [investigateTargetIp, setInvestigateTargetIp] = useState(null)
+  const [mitreFilter, setMitreFilter] = useState('')
 
-  const [
-    selectedAlert,
-    setSelectedAlert,
-  ] = useState(null)
-
-  const [
-    loading,
-    setLoading,
-  ] = useState(true)
-
-  const [
-    backendError,
-    setBackendError,
-  ] = useState(false)
-
-  const [
-    streamConnected,
-    setStreamConnected,
-  ] = useState(false)
-
-  const [
-    backendStats,
-    setBackendStats,
-  ] = useState(null)
-
-
-  useEffect(() => {
-
-    async function loadDashboardData() {
-
-      try {
-
-        setLoading(true)
-
-        setBackendError(false)
-
-
-        const [
-          backendAlerts,
-          statistics,
-        ] = await Promise.all([
-          fetchAlerts(),
-          fetchAlertStatistics(),
-        ])
-
-
-        setAlerts(
-          backendAlerts
-        )
-
-        setBackendStats(
-          statistics
-        )
-
-      } catch (error) {
-
-        console.error(
-          'Backend connection failed:',
-          error
-        )
-
-        setBackendError(true)
-
-      } finally {
-
-        setLoading(false)
-
-      }
-
+  const loadDashboardData = useCallback(async () => {
+    try {
+      setLoading(true)
+      const [backendAlerts, statistics] = await Promise.all([
+        fetchAlerts(),
+        fetchAlertStatistics(),
+      ])
+      setAlerts(backendAlerts)
+      setBackendStats(statistics)
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error)
+    } finally {
+      setLoading(false)
     }
+  }, [])
 
+  const handleManualRefresh = async () => {
+    setRefreshing(true)
+    try {
+      await loadDashboardData()
+    } finally {
+      setTimeout(() => setRefreshing(false), 500)
+    }
+  }
 
+  // Real-time SSE Stream Listener
+  useEffect(() => {
     loadDashboardData()
 
+    const disconnectStream = connectToAlertStream(
+      (newAlert) => {
+        setAlerts((current) => {
+          const exists = current.some((a) => a.alert_id === newAlert.alert_id)
+          if (exists) return current
+          return [newAlert, ...current]
+        })
 
-    const disconnectStream =
-      connectToAlertStream(
-        (newAlert) => {
+        // Highlight newly ingested row
+        setHighlightAlertId(newAlert.alert_id)
+        setTimeout(() => {
+          setHighlightAlertId((cur) => (cur === newAlert.alert_id ? null : cur))
+        }, 4000)
 
-          setAlerts(
-            (currentAlerts) => {
+        // Show clean Toast
+        setCurrentToast({ alert: newAlert })
 
-              const exists =
-                currentAlerts.some(
-                  (alert) =>
-                    alert.alert_id ===
-                    newAlert.alert_id
-                )
-
-
-              if (exists) {
-                return currentAlerts
-              }
-
-
-              return [
-                newAlert,
-                ...currentAlerts,
-              ]
-
-            }
-          )
-
-
-          fetchAlertStatistics()
-            .then((statistics) => {
-
-              setBackendStats(
-                statistics
-              )
-
-            })
-            .catch((error) => {
-
-              console.error(
-                'Failed to refresh statistics:',
-                error
-              )
-
-            })
-
-        },
-        setStreamConnected
-      )
-
+        // Refresh statistics
+        fetchAlertStatistics()
+          .then((stats) => setBackendStats(stats))
+          .catch((err) => console.error('Failed to refresh stats on SSE event:', err))
+      },
+      (status) => setStreamState(status)
+    )
 
     return () => {
       disconnectStream()
     }
+  }, [loadDashboardData])
 
-  }, [])
+  // Statistics
+  const statistics = useMemo(() => {
+    if (backendStats) return backendStats
 
+    const total = alerts.length
+    const critical = alerts.filter((a) => a.severity === 'CRITICAL').length
+    const high = alerts.filter((a) => a.severity === 'HIGH').length
+    return {
+      total_alerts: total,
+      critical,
+      high,
+    }
+  }, [backendStats, alerts])
 
-  const statistics =
-    useMemo(() => {
+  const threatLevel = useMemo(() => {
+    if (statistics.critical > 0) return 'CRITICAL'
+    if (statistics.high > 0) return 'ELEVATED'
+    if (statistics.total_alerts > 0) return 'GUARDED'
+    return 'NOMINAL'
+  }, [statistics])
 
-      if (backendStats) {
-        return backendStats
-      }
+  const threatLevelVariant = useMemo(() => {
+    if (threatLevel === 'CRITICAL') return 'threat-critical'
+    if (threatLevel === 'ELEVATED') return 'threat-elevated'
+    return 'threat-guarded'
+  }, [threatLevel])
 
-
-      const totalAlerts =
-        alerts.length
-
-
-      const critical =
-        alerts.filter(
-          (alert) =>
-            alert.severity ===
-            'CRITICAL'
-        ).length
-
-
-      const high =
-        alerts.filter(
-          (alert) =>
-            alert.severity ===
-            'HIGH'
-        ).length
-
-
-      const medium =
-        alerts.filter(
-          (alert) =>
-            alert.severity ===
-            'MEDIUM'
-        ).length
-
-
-      const low =
-        alerts.filter(
-          (alert) =>
-            alert.severity ===
-            'LOW'
-        ).length
-
-
-      return {
-        total_alerts:
-          totalAlerts,
-
-        critical,
-
-        high,
-
-        medium,
-
-        low,
-
-        threat_types: {},
-      }
-
-    }, [
-      backendStats,
-      alerts,
-    ])
-
-
-  const averageConfidence =
-    alerts.length > 0
-      ? alerts.reduce(
-          (sum, alert) =>
-            sum +
-            alert.confidence,
-          0
-        ) / alerts.length
-      : 0
-
+  const systemStatus = streamState === 'connected' ? 'ONLINE (RX DIODE)' : 'STANDBY (RX DIODE)'
+  const observedFlowsCount = statistics.observed_flows ?? (alerts.length > 0 ? alerts.length : 0)
 
   return (
-    <div className="app">
+    <div className="clean-soc-app">
+      {/* Real-time Toast */}
+      <ToastNotification
+        toast={currentToast}
+        onDismiss={() => setCurrentToast(null)}
+        onViewAlert={(a) => {
+          setSelectedAlert(a)
+          setCurrentToast(null)
+        }}
+      />
 
-      <Header />
+      {/* Header */}
+      <Header
+        streamState={streamState}
+        onRefresh={handleManualRefresh}
+        refreshing={refreshing}
+      />
 
+      {/* Hero Section: Real Traffic Analysis */}
+      <div id="real-traffic-analysis-section">
+        <RealTrafficAnalysis
+          onSelectAlert={setSelectedAlert}
+          alerts={alerts}
+          targetIp={investigateTargetIp}
+        />
+      </div>
 
-      <main className="dashboard-content">
+      {/* 4 KPIs: Professional SOC Metrics */}
+      <section className="kpi-row">
+        <StatCard
+          title="SYSTEM STATUS"
+          value={loading ? '...' : systemStatus}
+          variant="system"
+        />
+        <StatCard
+          title="THREAT LEVEL"
+          value={loading ? '...' : threatLevel}
+          variant={threatLevelVariant}
+        />
+        <StatCard
+          title="ACTIVE ALERTS"
+          value={loading ? '...' : statistics.total_alerts}
+          variant="alerts"
+        />
+        <StatCard
+          title="OBSERVED FLOWS"
+          value={loading ? '...' : observedFlowsCount}
+          variant="flows"
+        />
+      </section>
 
-        {backendError && (
+      {/* 2-Column Main Visualization Area */}
+      <section className="viz-row">
+        <ThreatActivity alerts={alerts} />
+        <ThreatDistribution alerts={alerts} />
+      </section>
 
-          <div className="backend-error">
-
-            Backend connection failed.
-            Make sure Anika's Flask
-            server is running on port 5000.
-
-          </div>
-
-        )}
-
-
-        <section className="stats-grid">
-
-          <StatCard
-            type="flows"
-            title="TOTAL FLOWS"
-            value="N/A"
-            change="Backend metric"
-            changeLabel="not available"
-          />
-
-
-          <StatCard
-            type="threats"
-            title="THREATS DETECTED"
-            value={
-              loading
-                ? '...'
-                : statistics.total_alerts
-            }
-            change="Live"
-            changeLabel={
-              streamConnected
-                ? 'LIVE BACKEND'
-                : 'BACKEND DATA'
-            }
-          />
-
-
-          <StatCard
-            type="highRisk"
-            title="HIGH RISK ALERTS"
-            value={
-              loading
-                ? '...'
-                : (
-                    statistics.critical +
-                    statistics.high
-                  )
-            }
-            change="Critical + High"
-            changeLabel="backend alerts"
-          />
-
-
-          <StatCard
-            type="confidence"
-            title="AVG CONFIDENCE"
-            value={
-              loading
-                ? '...'
-                : `${(
-                    averageConfidence *
-                    100
-                  ).toFixed(1)}%`
-            }
-            change="Detection score"
-            changeLabel="backend alerts"
-          />
-
-        </section>
-
-
-        <div className="charts-grid">
-
-          <ThreatActivity
-            alerts={alerts}
-          />
-
-          <ThreatDistribution
-            alerts={alerts}
-          />
-
-        </div>
-
-
+      {/* Hero Live Threat Detection Log */}
+      <div id="alert-table-section">
         <AlertTable
           alerts={alerts}
           loading={loading}
-          onSelectAlert={
-            setSelectedAlert
-          }
+          onSelectAlert={setSelectedAlert}
+          highlightAlertId={highlightAlertId}
+          externalSearch={mitreFilter}
         />
+      </div>
 
-      </main>
+      {/* Secondary Bottom Section: Demo / Test Environment (Safe Simulation) */}
+      <AttackSimulator />
 
-
+      {/* Right-Side Investigation Drawer */}
       <AlertDetails
         alert={selectedAlert}
-        onClose={() =>
-          setSelectedAlert(null)
-        }
+        onClose={() => setSelectedAlert(null)}
+        onInvestigateIp={(ip) => {
+          setInvestigateTargetIp(ip)
+          // Smooth scroll to RealTrafficAnalysis section
+          const el = document.getElementById('real-traffic-analysis-section')
+          if (el) el.scrollIntoView({ behavior: 'smooth' })
+        }}
+        onFilterMitre={(techId) => {
+          setMitreFilter(techId)
+          // Smooth scroll to AlertTable section
+          const el = document.getElementById('alert-table-section')
+          if (el) el.scrollIntoView({ behavior: 'smooth' })
+        }}
       />
-
     </div>
   )
 }
-
 
 export default App

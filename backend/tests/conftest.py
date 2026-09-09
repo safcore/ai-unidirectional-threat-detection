@@ -1,4 +1,4 @@
-﻿"""
+"""
 conftest.py — Shared pytest fixtures.
 
 Uses an in-memory (tmp) alert store so tests never touch backend/data/alerts.json.
@@ -39,6 +39,10 @@ def client(tmp_store, monkeypatch):
     # Patch alert_store inside ai_routes too
     import app.ai_routes as ai_routes_module
     monkeypatch.setattr(ai_routes_module, "alert_store", tmp_store)
+
+    # Patch alert_store inside attack_service too
+    import app.attack_service as attack_service_module
+    monkeypatch.setattr(attack_service_module, "alert_store", tmp_store)
 
     flask_app = create_app({"TESTING": True})
     flask_app.config["TESTING"] = True

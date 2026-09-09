@@ -57,6 +57,8 @@ class ThreatCorrelationEngine:
         if src_ip in self.groups:
             group = self.groups[src_ip]
             group.events.append(event)
+            if len(group.events) > 100:
+                group.events = group.events[-100:]
             if threat_class and threat_class not in group.threat_classes:
                 group.threat_classes.append(threat_class)
             group.last_seen = timestamp

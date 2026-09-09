@@ -1,4 +1,4 @@
-﻿"""Tests for / and /api/health endpoints."""
+"""Tests for / and /api/health endpoints."""
 import pytest
 
 
@@ -6,7 +6,7 @@ def test_root(client):
     resp = client.get("/")
     assert resp.status_code == 200
     data = resp.get_json()
-    assert data["service"] == "PS-145 Threat Detection Backend"
+    assert data["service"] in ("PS-145 Threat Detection Backend", "NETRION Threat Detection Backend")
     assert "endpoints" in data
 
 

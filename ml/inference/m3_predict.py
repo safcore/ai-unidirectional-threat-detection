@@ -54,6 +54,41 @@ class M3Predictor:
             "anomaly_score": 0.0,
         }
 
+    def predict_batch(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
+        if self.model is None:
+            return [{
+                "threat_class": "BENIGN",
+                "confidence": 0.0,
+                "probabilities": {},
+                "anomaly_score": 0.0,
+            } for _ in range(len(df))]
+
+        X = df[list(self.config.feature_names)]
+        preds = self.model.predict(X)
+        if hasattr(self.model, "predict_proba"):
+            probs = self.model.predict_proba(X)
+            classes = [str(v) for v in self.model.classes_]
+        else:
+            probs = None
+            classes = []
+
+        results = []
+        for i in range(len(df)):
+            p = str(preds[i])
+            if probs is not None:
+                prob_map = {classes[j]: round(float(probs[i][j]), 4) for j in range(len(classes))}
+                conf = round(max(prob_map.values()), 4)
+            else:
+                prob_map = {p: 1.0}
+                conf = 1.0
+            results.append({
+                "threat_class": p,
+                "confidence": conf,
+                "probabilities": prob_map,
+                "anomaly_score": 0.0,
+            })
+        return results
+
 
 _m3_predictor_instance = None
 

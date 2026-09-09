@@ -62,7 +62,12 @@ def ai_analyze(alert_id: str):
     try:
         alert = alert_store.get_by_id(alert_id)
         if alert is None:
-            return jsonify({"error": f"Alert not found: {alert_id}"}), 404
+            body = request.get_json(silent=True) or {}
+            candidate = body.get("alert") if isinstance(body.get("alert"), dict) else body
+            if isinstance(candidate, dict) and str(candidate.get("alert_id")) == alert_id:
+                alert = candidate
+            else:
+                return jsonify({"error": f"Alert not found: {alert_id}"}), 404
 
         refresh = request.args.get("refresh", "").lower() in ("true", "1", "yes")
         logger.info("AI analyze request: alert=%s refresh=%s", alert_id, refresh)

@@ -1,10 +1,22 @@
-﻿"""
+"""
 PS-145 Threat Detection Backend
 Flask application factory.
 """
 from __future__ import annotations
 
 from typing import Any
+
+import os
+import sys
+
+# Ensure backend directory and project root are in sys.path
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_dir = os.path.dirname(_current_dir)
+_project_root = os.path.dirname(_backend_dir)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
 
 # ── 1. Load .env BEFORE any singletons or routes are instantiated ─────────────
 from .env_loader import load_env

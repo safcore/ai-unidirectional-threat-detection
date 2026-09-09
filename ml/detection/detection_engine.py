@@ -72,7 +72,9 @@ class DetectionEngine:
             inference_result = predict(cleaned_features)
 
             # 3. Threat Decision Engine Evaluation
-            decision_result = self.decision_engine.evaluate(inference_result)
+            decision_result = self.decision_engine.evaluate(
+                inference_result, features=cleaned_features, metadata=metadata
+            )
 
             # 4. Alert Generation
             alert_obj = self.alert_generator.generate_alert(decision_result, metadata=metadata)
@@ -116,6 +118,61 @@ class DetectionEngine:
                 "error_type": "INFERENCE_PROCESSING_EXCEPTION",
                 "message": str(e),
             }
+
+    def process_batch(
+        self, features_list: list[Dict[str, Any]], metadata_list: Optional[list[Dict[str, Any]]] = None
+    ) -> list[Dict[str, Any]]:
+        """
+        High-throughput batch evaluation of multiple flow records.
+        Runs vectorized parallel M3 + M4 inference over the batch.
+        """
+        if not features_list:
+            return []
+
+        df = pd.DataFrame(features_list)
+        batch_inferences = predict(df)
+
+        events = []
+        meta_list = metadata_list or [{} for _ in range(len(features_list))]
+
+        for i, (features, inference_result, meta) in enumerate(zip(features_list, batch_inferences, meta_list)):
+            src_ip = meta.get("src_ip") or features.get("src_ip")
+            dst_ip = meta.get("dst_ip") or features.get("dst_ip")
+            src_port = meta.get("src_port") or features.get("src_port")
+            dst_port = meta.get("dst_port") or features.get("dst_port")
+
+            decision_result = self.decision_engine.evaluate(
+                inference_result, features=features, metadata=meta
+            )
+            alert_obj = self.alert_generator.generate_alert(decision_result, metadata=meta)
+
+            events.append({
+                "status": "success",
+                "event_id": str(uuid.uuid4()),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "threat_class": decision_result.threat_class,
+                "decision": decision_result.decision,
+                "confidence": decision_result.confidence,
+                "anomaly_score": decision_result.anomaly_score,
+                "decision_reason": decision_result.reason,
+                "probabilities": inference_result.get("probabilities", {}),
+                "classifications": inference_result.get("classifications", {}),
+                "source": {
+                    "src_ip": src_ip if src_ip else None,
+                    "src_port": int(src_port) if src_port is not None and str(src_port).isdigit() else None,
+                },
+                "destination": {
+                    "dst_ip": dst_ip if dst_ip else None,
+                    "dst_port": int(dst_port) if dst_port is not None and str(dst_port).isdigit() else None,
+                },
+                "model": {
+                    "classifier": "Parallel_M3_M4_RandomForest",
+                    "model_version": "phase3_m3_m4_fusion",
+                },
+                "alert": alert_obj.to_dict(),
+            })
+
+        return events
 
 
 # Singleton instance

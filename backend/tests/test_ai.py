@@ -298,14 +298,15 @@ class TestAIServiceUnit:
         monkeypatch.setenv("NVIDIA_API_KEY", "test-key")
         svc = AIService()
         # Simulate LLM call raising a timeout
-        with patch.object(svc, "_call_llm", return_value=None):
+        with patch.object(svc, "_call_llm", return_value=(None, "NVIDIA Nemotron request timed out")):
             result = svc.analyze_alert(VALID_ALERT, refresh=True)
         assert result["fallback"] is True
+        assert "timed out" in result["reason"].lower()
 
     def test_llm_json_parse_error_returns_fallback(self, monkeypatch):
         monkeypatch.setenv("NVIDIA_API_KEY", "test-key")
         svc = AIService()
-        with patch.object(svc, "_call_llm", return_value=None):
+        with patch.object(svc, "_call_llm", return_value=(None, "Could not parse JSON from LLM response")):
             result = svc.analyze_alert(VALID_ALERT, refresh=True)
         assert result["fallback"] is True
 
@@ -313,10 +314,11 @@ class TestAIServiceUnit:
         monkeypatch.setenv("NVIDIA_API_KEY", "test-key")
         svc = AIService()
         # Return a dict missing required fields
-        with patch.object(svc, "_call_llm", return_value={"only": "this"}):
+        with patch.object(svc, "_call_llm", return_value=({"only": "this"}, None)):
             result = svc.analyze_alert(VALID_ALERT, refresh=True)
         assert result["fallback"] is True
         assert "validation_errors" in result
+
 
     def test_valid_llm_response_passes_validation(self):
         analysis = copy.deepcopy(MOCK_AI_ANALYSIS)
@@ -437,3 +439,95 @@ Done."""
         assert parsed is not None
         assert parsed["risk_level"] == "HIGH"
         assert parsed["ai_summary"] == "Port scan detected."
+
+    def test_extract_json_plain_json(self):
+        """Regression test 1: Valid plain JSON response without any fences."""
+        raw_text = '{"ai_summary": "Plain JSON threat.", "threat_assessment": "Assessed.", "risk_level": "CRITICAL"}'
+        parsed = AIService._extract_json(raw_text)
+        assert parsed is not None
+        assert parsed["ai_summary"] == "Plain JSON threat."
+        assert parsed["risk_level"] == "CRITICAL"
+
+    def test_extract_json_fenced_json(self):
+        """Regression test 2: Valid ```json fenced response."""
+        raw_text = """```json
+{
+  "ai_summary": "Fenced JSON threat.",
+  "threat_assessment": "DDoS volume detected.",
+  "risk_level": "CRITICAL",
+  "confidence": 0.98
+}
+```"""
+        parsed = AIService._extract_json(raw_text)
+        assert parsed is not None
+        assert parsed["ai_summary"] == "Fenced JSON threat."
+        assert parsed["confidence"] == 0.98
+
+    def test_extract_json_surrounded_by_text(self):
+        """Regression test 3: JSON surrounded by harmless leading and trailing text."""
+        raw_text = """Note from model:
+The following threat analysis was conducted:
+{
+  "ai_summary": "Surrounded JSON.",
+  "threat_assessment": "High risk activity.",
+  "risk_level": "HIGH",
+  "recommended_actions": ["Block IP"]
+}
+Hope this helps the SOC team!"""
+        parsed = AIService._extract_json(raw_text)
+        assert parsed is not None
+        assert parsed["ai_summary"] == "Surrounded JSON."
+        assert parsed["recommended_actions"] == ["Block IP"]
+
+    def test_extract_json_malformed_unusable(self):
+        """Regression test 4: Genuinely malformed/non-JSON text returns None."""
+        raw_text = "I cannot analyze this alert because the model encountered an internal safety filter."
+        parsed = AIService._extract_json(raw_text)
+        assert parsed is None
+
+    def test_normalize_and_validate_recovers_missing_fields(self):
+        """Regression test 5: Normalization infers missing non-critical fields from alert evidence."""
+        partial = {
+            "summary": "Partial analysis provided by model.",
+            "risk_level": "critical",
+            "confidence": 98, # percentage format
+        }
+        from app.ai_service import _normalize_and_validate_ai_analysis
+        normalized, errors = _normalize_and_validate_ai_analysis(partial, VALID_ALERT)
+        assert errors == []
+        assert normalized is not None
+        assert normalized["ai_summary"] == "Partial analysis provided by model."
+        assert normalized["risk_level"] == "CRITICAL"
+        assert normalized["confidence"] == 0.98
+        assert "why_suspicious" in normalized
+        assert "recommended_actions" in normalized
+        assert normalized["mitre_context"]["tactic"] == "Discovery"
+
+    def test_duplicate_concurrent_investigation_requests(self, monkeypatch):
+        """Regression test 7: Duplicate concurrent investigation requests join the in-flight leader."""
+        import time, threading
+        monkeypatch.setenv("NVIDIA_API_KEY", "test-key")
+        svc = AIService()
+
+        call_count = [0]
+        def mock_llm_call(prompt):
+            call_count[0] += 1
+            time.sleep(0.1)
+            return copy.deepcopy(MOCK_AI_ANALYSIS), None
+
+        with patch.object(svc, "_call_llm", side_effect=mock_llm_call):
+            results = []
+            threads = []
+            for _ in range(5):
+                t = threading.Thread(target=lambda: results.append(svc.analyze_alert(VALID_ALERT, refresh=True)))
+                threads.append(t)
+                t.start()
+            for t in threads:
+                t.join()
+
+            assert len(results) == 5
+            # In-flight deduplication must ensure _call_llm is only invoked once
+            assert call_count[0] == 1
+            for r in results:
+                assert r["ai_summary"] == MOCK_AI_ANALYSIS["ai_summary"]
+

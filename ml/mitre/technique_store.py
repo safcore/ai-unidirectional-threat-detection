@@ -45,6 +45,18 @@ ATTACK_TECHNIQUES = {
         "tactic": "Command and Control",
         "description": "Adversaries may construct and use a proxy system to route malicious network connections.",
     },
+    "T1048": {
+        "technique_id": "T1048",
+        "technique_name": "Exfiltration Over Alternative Protocol",
+        "tactic": "Exfiltration",
+        "description": "Adversaries may steal data by exfiltrating it over a different protocol such as asymmetric DNS or HTTPS.",
+    },
+    "T1573": {
+        "technique_id": "T1573",
+        "technique_name": "Encrypted Channel",
+        "tactic": "Command and Control",
+        "description": "Adversaries may employ a known encryption algorithm or TLS session to conceal command and control traffic.",
+    },
 }
 
 

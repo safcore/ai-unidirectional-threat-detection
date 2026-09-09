@@ -48,6 +48,11 @@ def adapt_to_canonical_66(flow_record: Dict[str, Any]) -> Tuple[Dict[str, float]
         "mode": flow_record.get("extractor_mode", "nfstream"),
     }
 
+    # Pass through additional behavioral attributes if present
+    for extra_key in ("ja3", "ja3_hash", "ja4", "domain", "query_name", "tls_handshake", "attack_type"):
+        if extra_key in flow_record:
+            metadata[extra_key] = flow_record[extra_key]
+
     # Map features
     fwd_pkts = float(flow_record.get("Total Fwd Packets", 0.0) or flow_record.get("src2dst_packets", 0.0) or flow_record.get("pkt_count", 0.0))
     bwd_pkts = float(flow_record.get("Total Backward Packets", 0.0) or flow_record.get("dst2src_packets", 0.0))

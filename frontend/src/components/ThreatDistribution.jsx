@@ -1,131 +1,95 @@
+import { useMemo } from 'react'
 import {
   ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
   Tooltip,
-  Legend,
 } from 'recharts'
 
+const PALETTE = [
+  '#ef4444', // red
+  '#f97316', // orange
+  '#f59e0b', // amber
+  '#0ea5e9', // cyan
+  '#8b5cf6', // purple
+  '#10b981', // green
+]
 
 function ThreatDistribution({ alerts = [] }) {
+  const { chartData, total } = useMemo(() => {
+    const counts = {}
+    alerts.forEach((a) => {
+      const t = a.threat_class || 'Other'
+      counts[t] = (counts[t] || 0) + 1
+    })
 
-  const threatCounts = alerts.reduce(
-    (counts, alert) => {
+    const sorted = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5) // Top 5 categories to prevent huge list
 
-      const threat =
-        alert.threat_class ||
-        'Unknown'
-
-      counts[threat] =
-        (counts[threat] || 0) + 1
-
-      return counts
-
-    },
-    {}
-  )
-
-
-  const data = Object.entries(
-    threatCounts
-  ).map(
-    ([name, value]) => ({
+    const data = sorted.map(([name, value], idx) => ({
       name,
       value,
-    })
-  )
+      color: PALETTE[idx % PALETTE.length],
+    }))
 
+    return { chartData: data, total: alerts.length }
+  }, [alerts])
 
   return (
-    <section className="chart-card">
+    <div className="viz-card">
+      <div className="viz-header">
+        <span className="viz-title">Threat Distribution</span>
+        <span className="viz-sub-count">{total} Total Alerts</span>
+      </div>
 
-      <div className="chart-header">
-
-        <div>
-
-          <h2>Threat Distribution</h2>
-
-          <p>
-            Detected threats by category
-          </p>
-
+      <div className="viz-donut-grid">
+        <div className="donut-chart-box">
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={75}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {chartData.map((entry) => (
+                    <Cell key={entry.name} fill={entry.color} stroke="#0b101c" strokeWidth={2} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    color: '#f87171',
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="viz-empty">No distribution data</div>
+          )}
         </div>
 
+        <div className="donut-legend-box">
+          {chartData.map((item) => (
+            <div key={item.name} className="compact-legend-row">
+              <span className="legend-dot" style={{ backgroundColor: item.color }}></span>
+              <span className="legend-name" title={item.name}>{item.name}</span>
+              <span className="legend-qty">{item.value}</span>
+            </div>
+          ))}
+        </div>
       </div>
-
-
-      <div className="chart-container">
-
-        {data.length > 0 ? (
-
-          <ResponsiveContainer
-            width="100%"
-            height={280}
-          >
-
-            <PieChart>
-
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                innerRadius={65}
-                outerRadius={100}
-                paddingAngle={4}
-                dataKey="value"
-              >
-
-                {data.map(
-                  (entry, index) => (
-
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={
-                        [
-                          '#ef4444',
-                          '#f59e0b',
-                          '#60a5fa',
-                          '#a78bfa',
-                          '#22c55e',
-                          '#ec4899',
-                          '#14b8a6',
-                          '#f97316',
-                        ][
-                          index %
-                          8
-                        ]
-                      }
-                    />
-
-                  )
-                )}
-
-              </Pie>
-
-
-              <Tooltip />
-
-
-              <Legend />
-
-            </PieChart>
-
-          </ResponsiveContainer>
-
-        ) : (
-
-          <div className="no-chart-data">
-            No threat data available.
-          </div>
-
-        )}
-
-      </div>
-
-    </section>
+    </div>
   )
 }
-
 
 export default ThreatDistribution

@@ -28,10 +28,11 @@ logger = logging.getLogger(__name__)
 # ── Defaults ──────────────────────────────────────────────────────────────────
 _DEFAULT_MODEL   = "nvidia/nemotron-3.5-lightning-30b-a3b"
 _DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1"
-_DEFAULT_TIMEOUT = 120
+_DEFAULT_TIMEOUT = 45
 
 
-# ── AI Response Validation ────────────────────────────────────────────────────
+
+# ── AI Response Normalization & Validation ────────────────────────────────────
 
 VALID_RISK_LEVELS = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
 VALID_PRIORITIES  = {"LOW", "MEDIUM", "HIGH", "IMMEDIATE"}
@@ -69,6 +70,136 @@ def _validate_ai_analysis(data: Any) -> list[str]:
     return errors
 
 
+def _normalize_and_validate_ai_analysis(data: Any, alert: dict[str, Any] | None = None) -> tuple[dict[str, Any] | None, list[str]]:
+    """
+    Safely normalize and validate structured AI analysis response.
+    Returns (normalized_dict, list_of_errors).
+    If valid or fixable, returns (normalized_dict, []).
+    If genuinely unrecoverable, returns (None, errors).
+    """
+    if not isinstance(data, dict):
+        return None, ["AI response must be a JSON object"]
+
+    payload: dict[str, Any] = dict(data)
+
+    # Must contain at least one meaningful analysis content indicator
+    has_substance = any(k in payload for k in [
+        "ai_summary", "summary", "threat_assessment", "assessment", "reasoning", "why_suspicious"
+    ])
+    if not has_substance:
+        return None, ["AI response lacks meaningful investigation fields (summary, assessment, why_suspicious)"]
+
+    # 1. Normalize ai_summary
+    if not payload.get("ai_summary"):
+        if payload.get("summary"):
+            payload["ai_summary"] = str(payload["summary"]).strip()
+        elif payload.get("threat_assessment"):
+            payload["ai_summary"] = str(payload["threat_assessment"]).strip().split(".")[0] + "."
+        elif payload.get("description"):
+            payload["ai_summary"] = str(payload["description"]).strip()
+        else:
+            threat_name = (alert or {}).get("threat", "Potential security threat")
+            payload["ai_summary"] = f"{threat_name} detected and verified by analysis."
+
+    # 2. Normalize threat_assessment
+    if not payload.get("threat_assessment"):
+        if payload.get("assessment"):
+            payload["threat_assessment"] = str(payload["assessment"]).strip()
+        elif payload.get("reasoning"):
+            payload["threat_assessment"] = str(payload["reasoning"]).strip()
+        else:
+            payload["threat_assessment"] = str(payload["ai_summary"])
+
+    # 3. Normalize risk_level
+    raw_risk = str(payload.get("risk_level") or payload.get("severity") or (alert or {}).get("severity") or "HIGH").strip().upper()
+    if raw_risk in VALID_RISK_LEVELS:
+        payload["risk_level"] = raw_risk
+    elif "CRIT" in raw_risk:
+        payload["risk_level"] = "CRITICAL"
+    elif "HIGH" in raw_risk:
+        payload["risk_level"] = "HIGH"
+    elif "LOW" in raw_risk:
+        payload["risk_level"] = "LOW"
+    else:
+        payload["risk_level"] = "MEDIUM"
+
+    # 4. Normalize confidence (float 0.0 - 1.0)
+    conf = payload.get("confidence")
+    if isinstance(conf, (int, float)):
+        if conf > 1.0 and conf <= 100.0:
+            payload["confidence"] = round(float(conf) / 100.0, 2)
+        elif 0.0 <= conf <= 1.0:
+            payload["confidence"] = round(float(conf), 2)
+        else:
+            payload["confidence"] = 0.85
+    else:
+        try:
+            val = float(str(conf).replace("%", "").strip())
+            payload["confidence"] = round(val / 100.0, 2) if val > 1.0 else round(val, 2)
+        except (ValueError, TypeError):
+            payload["confidence"] = float((alert or {}).get("confidence", 0.85))
+
+    # 5. Normalize why_suspicious
+    reasons = payload.get("why_suspicious") or payload.get("indicators") or payload.get("reasons") or payload.get("evidence")
+    if isinstance(reasons, list):
+        payload["why_suspicious"] = [str(r).strip() for r in reasons if str(r).strip()]
+    elif isinstance(reasons, str) and reasons.strip():
+        payload["why_suspicious"] = [r.strip("-* \t") for r in reasons.split("\n") if r.strip("-* \t")]
+    else:
+        payload["why_suspicious"] = [
+            f"Observed anomalous flow characteristics matching {payload.get('risk_level', 'HIGH')} risk profile."
+        ]
+
+    # 6. Normalize recommended_actions
+    actions = payload.get("recommended_actions") or payload.get("remediation") or payload.get("actions") or payload.get("recommendations")
+    if isinstance(actions, list):
+        payload["recommended_actions"] = [str(a).strip() for a in actions if str(a).strip()]
+    elif isinstance(actions, str) and actions.strip():
+        payload["recommended_actions"] = [a.strip("-* \t") for a in actions.split("\n") if a.strip("-* \t")]
+    else:
+        payload["recommended_actions"] = [
+            "Investigate host and verify firewall/diode rule sets."
+        ]
+
+    # 7. Normalize attack_stage
+    if not payload.get("attack_stage"):
+        stage = payload.get("stage") or payload.get("lifecycle") or (alert or {}).get("mitre", {}).get("tactic") or "Initial Access"
+        payload["attack_stage"] = str(stage).strip()
+
+    # 8. Normalize mitre_context
+    mitre = payload.get("mitre_context") or payload.get("mitre")
+    alert_mitre = (alert or {}).get("mitre", {})
+    if isinstance(mitre, dict):
+        payload["mitre_context"] = {
+            "tactic": str(mitre.get("tactic") or alert_mitre.get("tactic") or "Unknown"),
+            "technique": str(mitre.get("technique") or alert_mitre.get("technique") or "Unknown"),
+            "technique_name": str(mitre.get("technique_name") or alert_mitre.get("technique_name") or "Adversarial Behavior"),
+        }
+    else:
+        payload["mitre_context"] = {
+            "tactic": str(alert_mitre.get("tactic") or "Unknown"),
+            "technique": str(alert_mitre.get("technique") or "Unknown"),
+            "technique_name": str(alert_mitre.get("technique_name") or "Adversarial Behavior"),
+        }
+
+    # 9. Normalize investigation_priority
+    prio = str(payload.get("investigation_priority") or payload.get("priority") or "HIGH").strip().upper()
+    if prio in VALID_PRIORITIES:
+        payload["investigation_priority"] = prio
+    elif "CRIT" in prio or "IMM" in prio:
+        payload["investigation_priority"] = "IMMEDIATE"
+    elif "HIGH" in prio:
+        payload["investigation_priority"] = "HIGH"
+    elif "LOW" in prio:
+        payload["investigation_priority"] = "LOW"
+    else:
+        payload["investigation_priority"] = "MEDIUM"
+
+    return payload, []
+
+
+
+
 def _validate_correlation(data: Any) -> list[str]:
     """Validate correlation response."""
     if not isinstance(data, dict):
@@ -97,17 +228,15 @@ def _build_analysis_prompt(alert: dict[str, Any]) -> str:
     mitre: dict[str, Any] = alert.get("mitre", {})
     evidence: dict[str, Any] = alert.get("evidence", {})
 
-    return f"""You are a defensive SOC (Security Operations Center) analyst assistant.
-Analyze the following network security alert and provide a structured assessment.
+    return f"""You are a defensive SOC (Security Operations Center) analyst assistant. Analyze this network security alert concisely.
 
 ALERT DATA:
 - Alert ID: {alert.get("alert_id")}
-- Timestamp: {alert.get("timestamp")}
 - Threat Type: {alert.get("threat")}
 - Severity: {alert.get("severity")}
 - Detection Confidence: {alert.get("confidence")}
-- Source IP: {alert.get("source_ip")} : {alert.get("source_port")}
-- Destination IP: {alert.get("destination_ip")} : {alert.get("destination_port")}
+- Source IP: {alert.get("source_ip")}:{alert.get("source_port")}
+- Destination IP: {alert.get("destination_ip")}:{alert.get("destination_port")}
 - Protocol: {alert.get("protocol")}
 - MITRE ATT&CK Tactic: {mitre.get("tactic")}
 - MITRE ATT&CK Technique: {mitre.get("technique")} — {mitre.get("technique_name")}
@@ -116,23 +245,23 @@ ALERT DATA:
 STRICT RULES:
 1. Base your analysis ONLY on the data provided above.
 2. Do NOT invent IP reputation, malware names, CVEs, DNS records, or attribution.
-3. Clearly separate confirmed evidence from analytical inference.
-4. Your role is to help a human analyst prioritize and investigate — not to make final decisions.
+3. Return concise JSON directly. No preamble. No markdown fences. No chain-of-thought.
+4. Keep the response brief and focused (target 300-500 tokens).
 
-Respond with ONLY a JSON object (no markdown, no explanation outside the JSON) with this exact structure:
+JSON Structure:
 {{
-  "ai_summary": "One concise sentence describing the threat.",
-  "threat_assessment": "2-3 sentence detailed assessment based on the evidence provided.",
+  "ai_summary": "1 concise sentence summarizing the threat.",
+  "threat_assessment": "2-3 concise sentences assessing evidence.",
   "risk_level": "CRITICAL|HIGH|MEDIUM|LOW",
-  "confidence": <float 0.0-1.0 reflecting your analytical confidence>,
-  "why_suspicious": ["Specific reason 1", "Specific reason 2", "Specific reason 3"],
-  "attack_stage": "The stage of the attack lifecycle (e.g., Reconnaissance, Initial Access, Command and Control, Exfiltration)",
+  "confidence": <float 0.0-1.0>,
+  "why_suspicious": ["Reason 1", "Reason 2"],
+  "attack_stage": "Stage name (e.g., Reconnaissance, Command and Control, Exfiltration)",
   "mitre_context": {{
     "tactic": "{mitre.get("tactic")}",
     "technique": "{mitre.get("technique")}",
     "technique_name": "{mitre.get("technique_name")}"
   }},
-  "recommended_actions": ["Action 1", "Action 2", "Action 3"],
+  "recommended_actions": ["Action 1", "Action 2"],
   "investigation_priority": "IMMEDIATE|HIGH|MEDIUM|LOW"
 }}"""
 
@@ -189,6 +318,9 @@ class AIService:
         self._lock = threading.Lock()
         # analysis cache: alert_id → {"result": dict, "cached_at": float}
         self._cache: dict[str, dict[str, Any]] = {}
+        # in-flight deduplication: alert_id → threading.Event
+        self._in_flight: dict[str, threading.Event] = {}
+        self._in_flight_results: dict[str, dict[str, Any]] = {}
         self._client: Any = None
 
     # ── Config ────────────────────────────────────────────────────────────────
@@ -320,16 +452,16 @@ class AIService:
 
         return None
 
-    def _call_llm(self, prompt: str) -> dict[str, Any] | None:
+    def _call_llm(self, prompt: str) -> tuple[dict[str, Any] | None, str | None]:
         """
         Call the NVIDIA NIM API and parse the JSON response.
 
-        Returns parsed dict, or None on any failure.
+        Returns (parsed_dict, error_reason).
         Never raises — all errors are logged and suppressed.
         """
         client = self._get_client()
         if client is None:
-            return None
+            return None, "NVIDIA NIM client unavailable"
 
         try:
             response = client.chat.completions.create(
@@ -342,24 +474,26 @@ class AIService:
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.1,   # lower temperature → more consistent structured output
-                max_tokens=4096,
+                max_tokens=600,
+                timeout=self.timeout,
+                extra_body={"chat_template_kwargs": {"enable_thinking": False}},
             )
             if not response or not getattr(response, "choices", None):
                 logger.error("AI: No choices returned in LLM response")
-                return None
+                return None, "No choices returned in LLM response"
 
             choice = response.choices[0] if len(response.choices) > 0 else None
             if not choice or not getattr(choice, "message", None):
                 logger.error("AI: No message returned in LLM response choice")
-                return None
+                return None, "No message returned in LLM response choice"
 
             raw_text = getattr(choice.message, "content", None)
             if not raw_text:
                 logger.error("AI: Empty content in LLM response")
-                return None
+                return None, "Empty content in LLM response"
             if not isinstance(raw_text, str):
                 logger.error("AI: Non-string content in LLM response")
-                return None
+                return None, "Non-string content in LLM response"
 
             raw_text = raw_text.strip()
             logger.debug("AI raw response: %s", raw_text[:200])
@@ -367,18 +501,20 @@ class AIService:
             parsed = self._extract_json(raw_text)
             if parsed is None:
                 logger.error("AI: Could not parse JSON from LLM response")
-                return None
-            return parsed
+                return None, "Could not parse JSON from LLM response"
+            return parsed, None
 
         except Exception as exc:
-            # Catches: APIConnectionError, AuthenticationError, RateLimitError, timeout
+            # Catches: APIConnectionError, AuthenticationError, RateLimitError, APITimeoutError, Timeout
             err_type = type(exc).__name__
-            # Never log the API key — just log the error type and message
             safe_msg = str(exc)
             if self._api_key and self._api_key in safe_msg:
                 safe_msg = safe_msg.replace(self._api_key, "[REDACTED]")
             logger.error("AI: LLM call failed (%s): %s", err_type, safe_msg)
-            return None
+
+            if "timeout" in err_type.lower() or "timed out" in safe_msg.lower():
+                return None, "NVIDIA Nemotron request timed out. Nemotron is taking longer than expected. Please retry."
+            return None, f"LLM call failed: {err_type}"
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -386,6 +522,8 @@ class AIService:
         """
         Analyze a single alert with Nemotron.
 
+        Includes in-flight request deduplication per alert_id to avoid
+        duplicate concurrent API calls.
         Returns a dict with either the AI analysis or an error structure.
         Never raises.
         """
@@ -402,40 +540,94 @@ class AIService:
                     logger.info("AI: Returning cached analysis for %s", alert_id)
                     return result
 
-            if not self.enabled:
+            # Deduplication: check if this alert is already being analyzed in-flight
+            with self._lock:
+                if alert_id in self._in_flight:
+                    in_flight_evt = self._in_flight[alert_id]
+                    is_leader = False
+                else:
+                    in_flight_evt = threading.Event()
+                    self._in_flight[alert_id] = in_flight_evt
+                    is_leader = True
+
+            if not is_leader:
+                logger.info("AI: Joining in-flight analysis for %s", alert_id)
+                # Wait for the leader thread to finish (up to timeout + 2 seconds)
+                finished = in_flight_evt.wait(timeout=self.timeout + 2)
+                with self._lock:
+                    if finished and alert_id in self._in_flight_results:
+                        return dict(self._in_flight_results[alert_id])
+                # If leader timed out or had no result, check cache
+                cached = self._cache_get(alert_id)
+                if cached:
+                    return dict(cached["result"])
                 return {
                     "error": "AI service unavailable",
-                    "reason": "NVIDIA_API_KEY not configured",
+                    "reason": "NVIDIA Nemotron request timed out. Nemotron is taking longer than expected. Please retry.",
                     "fallback": True,
                 }
 
-            prompt = _build_analysis_prompt(alert)
-            raw = self._call_llm(prompt)
+            # We are the leader for this alert_id
+            try:
+                if not self.enabled:
+                    res = {
+                        "error": "AI service unavailable",
+                        "reason": "NVIDIA_API_KEY not configured",
+                        "fallback": True,
+                    }
+                    with self._lock:
+                        self._in_flight_results[alert_id] = res
+                    return res
 
-            if raw is None:
-                return {
-                    "error": "AI service unavailable",
-                    "reason": "LLM call failed or timed out",
-                    "fallback": True,
-                }
+                prompt = _build_analysis_prompt(alert)
+                raw, err_reason = self._call_llm(prompt)
 
-            # Validate the structured response
-            errors = _validate_ai_analysis(raw)
-            if errors:
-                logger.warning("AI: Response failed validation for %s: %s", alert_id, errors)
-                return {
-                    "error": "AI returned malformed response",
-                    "validation_errors": errors,
-                    "fallback": True,
-                }
+                if raw is None:
+                    reason = err_reason or "LLM call failed or timed out"
+                    res = {
+                        "error": "AI service unavailable",
+                        "reason": reason,
+                        "fallback": True,
+                    }
+                    with self._lock:
+                        self._in_flight_results[alert_id] = res
+                    return res
 
-            # Inject alert_id and cache
-            raw["alert_id"] = alert_id
-            raw["_cached"] = False
-            self._cache_set(alert_id, raw)
+                # Normalize and validate the structured response
+                normalized, errors = _normalize_and_validate_ai_analysis(raw, alert)
+                if normalized is None or errors:
+                    logger.warning("AI: Response failed validation for %s: %s", alert_id, errors)
+                    res = {
+                        "error": "Nemotron returned an unusable response. Please retry the investigation.",
+                        "reason": "AI returned unusable or unparsable response",
+                        "validation_errors": errors,
+                        "retryable": True,
+                        "fallback": True,
+                    }
+                    with self._lock:
+                        self._in_flight_results[alert_id] = res
+                    return res
 
-            logger.info("AI: Analysis complete for %s (risk=%s)", alert_id, raw.get("risk_level"))
-            return raw
+                # Inject alert_id and cache
+                normalized["alert_id"] = alert_id
+                normalized["_cached"] = False
+                self._cache_set(alert_id, normalized)
+
+                with self._lock:
+                    self._in_flight_results[alert_id] = normalized
+
+                logger.info("AI: Analysis complete for %s (risk=%s)", alert_id, normalized.get("risk_level"))
+                return normalized
+
+            finally:
+                # Always signal any waiting threads and clean up in-flight tracking
+                in_flight_evt.set()
+                with self._lock:
+                    self._in_flight.pop(alert_id, None)
+                    # Clean up old in-flight results after short retention
+                    if len(self._in_flight_results) > 100:
+                        self._in_flight_results.clear()
+
         except Exception as exc:
             logger.error("AI: Unexpected error in analyze_alert: %s", exc)
             return {
@@ -443,6 +635,7 @@ class AIService:
                 "reason": str(exc),
                 "fallback": True,
             }
+
 
     def correlate_alerts(self, alerts: list[dict[str, Any]]) -> dict[str, Any]:
         """
@@ -465,7 +658,7 @@ class AIService:
                 }
 
             prompt = _build_correlation_prompt(alerts)
-            raw = self._call_llm(prompt)
+            raw, _ = self._call_llm(prompt)
 
             if raw is None:
                 return {

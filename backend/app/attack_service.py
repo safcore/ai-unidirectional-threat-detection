@@ -12,7 +12,23 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-VALID_ATTACK_TYPES = {"syn_flood", "port_scan", "dns_tunnel"}
+try:
+    from . import alert_store, stream_manager
+except ImportError:
+    try:
+        from app import alert_store, stream_manager
+    except ImportError:
+        from backend.app import alert_store, stream_manager
+
+VALID_ATTACK_TYPES = {
+    "syn_flood",
+    "port_scan",
+    "dns_tunnel",
+    "c2_beacon",
+    "data_exfiltration",
+    "encrypted_anomaly",
+    "tls_metadata",
+}
 
 
 class AttackJob:
@@ -72,7 +88,7 @@ class AttackService:
 
         # Validate and clamp parameters
         target = str(params.get("target") or "127.0.0.1").strip()
-        duration = max(1.0, min(60.0, float(params.get("duration", 10.0))))
+        duration = max(1.0, min(60.0, float(params.get("duration", 2.0))))
         force_simulation = bool(params.get("simulation", True))
 
         validated_params: Dict[str, Any] = {
@@ -94,6 +110,19 @@ class AttackService:
             rate = max(1, min(100, int(params.get("rate", 5))))
             domain = str(params.get("domain", "tunnel.example.com")).strip()
             validated_params.update({"rate": rate, "domain": domain})
+        elif attack_type == "c2_beacon":
+            port = int(params.get("port", 8443))
+            interval = max(0.1, min(10.0, float(params.get("interval", 1.0))))
+            validated_params.update({"port": port, "interval": interval})
+        elif attack_type == "data_exfiltration":
+            port = int(params.get("port", 443))
+            rate_kbps = max(10, min(10000, int(params.get("rate_kbps", 500))))
+            validated_params.update({"port": port, "rate_kbps": rate_kbps})
+        elif attack_type in ("encrypted_anomaly", "tls_metadata"):
+            port = int(params.get("port", 443))
+            rate = max(1, min(50, int(params.get("rate", 2))))
+            ja3 = str(params.get("ja3", "a0e9f5d64349fb13191bc781f81f42e1")).strip()
+            validated_params.update({"port": port, "rate": rate, "ja3": ja3})
 
         with self._lock:
             job_id = self._next_id()
@@ -116,6 +145,9 @@ class AttackService:
     def _run_job(self, job: AttackJob) -> None:
         """Worker thread executing the specific attack generator."""
         try:
+            # Immediately ingest simulated observable flow into detection pipeline & broadcast via SSE
+            self._ingest_attack_detection(job)
+
             p = job.params
             if job.attack_type == "syn_flood":
                 from attack_gen.syn_flood import SynFloodGenerator
@@ -157,6 +189,45 @@ class AttackService:
                 sent = gen.run()
                 job.progress["sent"] = sent
 
+            elif job.attack_type == "c2_beacon":
+                from attack_gen.c2_beacon import C2BeaconGenerator
+                gen = C2BeaconGenerator(
+                    target_ip=p["target"],
+                    target_port=p.get("port", 8443),
+                    interval_sec=p.get("interval", 1.0),
+                    duration_sec=p["duration"],
+                    stop_event=job.stop_event,
+                )
+                sent = gen.run()
+                job.progress["sent"] = sent
+
+            elif job.attack_type == "data_exfiltration":
+                from attack_gen.data_exfiltration import DataExfiltrationGenerator
+                gen = DataExfiltrationGenerator(
+                    target_ip=p["target"],
+                    target_port=p.get("port", 443),
+                    rate_kbps=p.get("rate_kbps", 500),
+                    duration_sec=p["duration"],
+                    stop_event=job.stop_event,
+                )
+                bytes_sent = gen.run()
+                job.progress["sent"] = bytes_sent
+                job.progress["bytes_sent"] = bytes_sent
+
+            elif job.attack_type in ("encrypted_anomaly", "tls_metadata"):
+                from attack_gen.tls_metadata import TLSMetadataAnomalyGenerator
+                gen = TLSMetadataAnomalyGenerator(
+                    target_ip=p["target"],
+                    target_port=p.get("port", 443),
+                    rate=p.get("rate", 2),
+                    duration_sec=p["duration"],
+                    ja3_profile=p.get("ja3", "a0e9f5d64349fb13191bc781f81f42e1"),
+                    stop_event=job.stop_event,
+                )
+                sessions = gen.run()
+                job.progress["sent"] = sessions
+                job.progress["sessions"] = sessions
+
             with self._lock:
                 if job.stop_event.is_set():
                     job.status = "stopped"
@@ -170,6 +241,170 @@ class AttackService:
                 job.status = "error"
                 job.error = str(exc)
                 job.ended_at = time.time()
+
+    def _ingest_attack_detection(self, job: AttackJob) -> Optional[Dict[str, Any]]:
+        """
+        Injects the simulated observable attack flow into the canonical M2->M3/M4->M5 pipeline,
+        stores the resulting alert in the alert store, and broadcasts it via SSE.
+        """
+        try:
+            from m2_features import adapt_to_canonical_66
+            try:
+                from app.m4_integration import process_detection
+            except ImportError:
+                from backend.app.m4_integration import process_detection
+
+            p = job.params
+            target_ip = str(p.get("target") or "127.0.0.1").strip()
+            target_port = int(p.get("port") or 80)
+            duration = float(p.get("duration") or 5.0)
+            rate = float(p.get("rate") or 100)
+
+            if job.attack_type == "syn_flood":
+                flow_record = {
+                    "Destination Port": target_port,
+                    "Flow Duration": max(1000.0, duration * 100000.0),
+                    "Total Fwd Packets": max(100.0, rate * duration),
+                    "Total Backward Packets": 0.0,
+                    "Total Length of Fwd Packets": max(4000.0, rate * duration * 40.0),
+                    "Total Length of Bwd Packets": 0.0,
+                    "Fwd Packet Length Max": 40.0,
+                    "Fwd Packet Length Min": 40.0,
+                    "Fwd Packet Length Mean": 40.0,
+                    "Flow Packets/s": max(5000.0, rate * 100.0),
+                    "Flow Bytes/s": max(200000.0, rate * 4000.0),
+                    "SYN Flag Count": max(100.0, rate * duration),
+                    "ACK Flag Count": 0.0,
+                    "FIN Flag Count": 0.0,
+                    "src_ip": "192.168.1.105",
+                    "dst_ip": target_ip,
+                    "src_port": 54321,
+                    "dst_port": target_port,
+                    "protocol": "TCP",
+                }
+            elif job.attack_type == "port_scan":
+                start_p = int(p.get("port_start") or 1)
+                end_p = int(p.get("port_end") or 100)
+                flow_record = {
+                    "Destination Port": start_p,
+                    "Flow Duration": 15000.0,
+                    "Total Fwd Packets": float(max(10, end_p - start_p + 1)),
+                    "Total Backward Packets": 0.0,
+                    "Total Length of Fwd Packets": float(max(10, end_p - start_p + 1) * 40),
+                    "Total Length of Bwd Packets": 0.0,
+                    "SYN Flag Count": float(max(10, end_p - start_p + 1)),
+                    "Flow Packets/s": 8000.0,
+                    "src_ip": "172.16.0.99",
+                    "dst_ip": target_ip,
+                    "src_port": 49152,
+                    "dst_port": start_p,
+                    "protocol": "TCP",
+                }
+            elif job.attack_type == "dns_tunnel":
+                domain = str(p.get("domain") or "tunnel.example.com").strip()
+                flow_record = {
+                    "Destination Port": 53,
+                    "Flow Duration": 300000.0,
+                    "Total Fwd Packets": 50.0,
+                    "Total Backward Packets": 5.0,
+                    "Total Length of Fwd Packets": 25000.0,
+                    "Total Length of Bwd Packets": 500.0,
+                    "Fwd Packet Length Max": 512.0,
+                    "Fwd Packet Length Mean": 450.0,
+                    "src_ip": "192.168.1.42",
+                    "dst_ip": target_ip,
+                    "src_port": 53535,
+                    "dst_port": 53,
+                    "protocol": "UDP",
+                    "domain": f"aW5maWx0cmF0aW9uLXNlY3JldA.{domain}",
+                }
+            elif job.attack_type == "c2_beacon":
+                flow_record = {
+                    "Destination Port": int(p.get("port") or 8443),
+                    "Flow Duration": 10000.0,
+                    "Total Fwd Packets": 25.0,
+                    "Total Backward Packets": 5.0,
+                    "Fwd Packet Length Mean": 32.0,
+                    "Flow IAT Mean": 1000.0,
+                    "src_ip": "192.168.1.55",
+                    "dst_ip": target_ip,
+                    "src_port": 49876,
+                    "dst_port": int(p.get("port") or 8443),
+                    "protocol": "TCP",
+                }
+            elif job.attack_type == "data_exfiltration":
+                flow_record = {
+                    "Destination Port": int(p.get("port") or 443),
+                    "Flow Duration": 50000.0,
+                    "Total Fwd Packets": 200.0,
+                    "Total Backward Packets": 10.0,
+                    "Total Length of Fwd Packets": 500000.0,
+                    "Total Length of Bwd Packets": 1000.0,
+                    "Fwd Packet Length Max": 1460.0,
+                    "src_ip": "192.168.1.77",
+                    "dst_ip": target_ip,
+                    "src_port": 51234,
+                    "dst_port": int(p.get("port") or 443),
+                    "protocol": "TCP",
+                }
+            elif job.attack_type in ("encrypted_anomaly", "tls_metadata"):
+                flow_record = {
+                    "Destination Port": int(p.get("port") or 443),
+                    "Flow Duration": 5000000.0,
+                    "Total Fwd Packets": 40.0,
+                    "Total Backward Packets": 5.0,
+                    "Total Length of Fwd Packets": 60000.0,
+                    "Total Length of Bwd Packets": 300.0,
+                    "Packet Length Std": 2.0,
+                    "Flow IAT Std": 0.02,
+                    "src_ip": "10.0.0.45",
+                    "dst_ip": target_ip,
+                    "src_port": 58210,
+                    "dst_port": int(p.get("port") or 443),
+                    "protocol": "TCP",
+                    "ja3": str(p.get("ja3") or "a0e9f5d64349fb13191bc781f81f42e1"),
+                }
+            else:
+                flow_record = {
+                    "Destination Port": target_port,
+                    "src_ip": "192.168.1.100",
+                    "dst_ip": target_ip,
+                    "src_port": 54321,
+                    "dst_port": target_port,
+                    "protocol": "TCP",
+                }
+
+            flow_record["attack_type"] = job.attack_type
+            features, metadata = adapt_to_canonical_66(flow_record)
+            event, incident, alert = process_detection(features, metadata)
+
+            stored = None
+            if alert and "Benign" not in alert.get("threat", ""):
+                stored = alert_store.add(alert)
+                stream_manager.broadcast(stored)
+                logger.info("Attack %s generated alert: %s (%s, severity=%s)",
+                            job.job_id, stored.get("alert_id"), stored.get("threat"), stored.get("severity"))
+
+            try:
+                from .flow_store import flow_store
+                flow_store.record_flow(
+                    features=features,
+                    metadata=metadata,
+                    detection=event,
+                    alert_id=stored.get("alert_id") if stored else None,
+                    raw_stats={
+                        "packet_count": int(flow_record.get("Total Fwd Packets", 100)),
+                        "byte_count": int(flow_record.get("Total Length of Fwd Packets", 4000)),
+                        "duration_us": float(flow_record.get("Flow Duration", 10000.0)),
+                    },
+                )
+            except Exception as store_err:
+                logger.debug("Could not record flow in flow_store: %s", store_err)
+
+            return stored
+        except Exception as exc:
+            logger.exception("Failed to ingest attack detection alert for %s: %s", job.job_id, exc)
+            return None
 
     def stop_attack(self, attack_id: str) -> Optional[Dict[str, Any]]:
         """Signal an attack job to stop immediately."""

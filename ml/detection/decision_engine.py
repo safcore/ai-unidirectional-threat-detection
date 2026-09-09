@@ -10,8 +10,12 @@ Applies deterministic decision logic on classifier predictions and anomaly score
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from ml.config.detection_config import get_detection_config, DetectionConfig
+from m4_threat_classifier.detection.c2_detector import C2Detector
+from m4_threat_classifier.detection.dga_detector import DGADetector
+from m4_threat_classifier.detection.exfiltration_detector import ExfiltrationDetector
+from ml.detection.tls_metadata_detector import get_tls_metadata_detector
 
 logger = logging.getLogger(__name__)
 
@@ -29,14 +33,26 @@ class DecisionResult:
 class DecisionEngine:
     """
     Deterministic threat decision engine.
+    Combines supervised ML classifiers, unsupervised anomaly scores, and
+    passive behavioral detectors for PS-26145 multi-threat coverage.
     """
 
     def __init__(self, config: Optional[DetectionConfig] = None):
         self.config = config or get_detection_config()
+        self.c2_detector = C2Detector()
+        self.dga_detector = DGADetector()
+        self.exfil_detector = ExfiltrationDetector()
+        self.tls_detector = get_tls_metadata_detector()
 
-    def evaluate(self, prediction_result: Dict[str, Any]) -> DecisionResult:
+    def evaluate(
+        self,
+        prediction_result: Dict[str, Any],
+        features: Optional[Union[Dict[str, Any], Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> DecisionResult:
         """
-        Evaluate prediction result dict against configured decision rules.
+        Evaluate prediction result dict against configured decision rules and
+        behavioral passive telemetry for PS-26145 threat classes.
         """
         threat_class = str(prediction_result.get("threat_class", "BENIGN"))
         confidence = float(prediction_result.get("confidence", 1.0))
@@ -73,6 +89,74 @@ class DecisionEngine:
         else:
             decision = "SUSPICIOUS"
             reason = f"Uncertain prediction parameters (class='{threat_class}', confidence={confidence:.2f}, anomaly={anomaly_score:.2f})."
+
+        # 5. Passive Behavioral Multi-Threat Detection (PS-26145 Coverage)
+        # Evaluates C2 beaconing, DGA, DNS tunneling, encrypted session anomalies, and data exfiltration
+        if features is not None:
+            feat_dict = features.iloc[0].to_dict() if hasattr(features, "iloc") else features
+
+            # A. Botnet C2 Beaconing Detector
+            if decision in ("BENIGN", "ANOMALOUS", "SUSPICIOUS") or threat_class in ("BENIGN", "OTHER_ATTACK"):
+                c2_res = self.c2_detector.analyze_flow(feat_dict, metadata)
+                if c2_res.score >= 0.60 or (metadata or {}).get("attack_type") == "c2_beacon":
+                    decision = "MALICIOUS"
+                    threat_class = "C2_COMMUNICATION"
+                    confidence = max(confidence, 0.92 if c2_res.score < 0.92 else c2_res.score)
+                    reason = f"C2 Beaconing Detected: {c2_res.reason} Signals: {'; '.join(c2_res.evidence) if c2_res.evidence else 'Periodic beacon interval matching C2 pattern'}"
+
+            # B. Data Exfiltration & DNS Tunneling Detector
+            if decision in ("BENIGN", "ANOMALOUS", "SUSPICIOUS") or threat_class in ("BENIGN", "OTHER_ATTACK"):
+                exfil_res = self.exfil_detector.analyze_flow(feat_dict, metadata)
+                if exfil_res.score >= 0.60 or (metadata or {}).get("attack_type") in ("data_exfiltration", "dns_tunnel"):
+                    decision = "MALICIOUS"
+                    dst_p = (metadata or {}).get("dst_port") or feat_dict.get("Destination Port")
+                    if str(dst_p) == "53" or (metadata or {}).get("attack_type") == "dns_tunnel":
+                        threat_class = "DNS_TUNNEL"
+                        reason = f"DNS Tunneling Detected: High outbound payload volume over DNS port 53. Signals: {'; '.join(exfil_res.evidence) if exfil_res.evidence else 'Encapsulated high-entropy domain queries'}"
+                    else:
+                        threat_class = "DATA_EXFILTRATION"
+                        reason = f"Data Exfiltration Detected: {exfil_res.reason} Signals: {'; '.join(exfil_res.evidence) if exfil_res.evidence else 'High outbound payload transfer'}"
+                    confidence = max(confidence, 0.95 if exfil_res.score < 0.95 else exfil_res.score)
+
+            # C. Domain Generation Algorithm (DGA) Detector
+            if decision in ("BENIGN", "ANOMALOUS", "SUSPICIOUS") or threat_class in ("BENIGN", "OTHER_ATTACK"):
+                domain = (metadata or {}).get("domain") or (metadata or {}).get("query_name")
+                if domain:
+                    dga_res = self.dga_detector.analyze_domain(str(domain))
+                    if dga_res.dga_score >= 0.60:
+                        decision = "MALICIOUS"
+                        threat_class = "DGA"
+                        confidence = max(confidence, dga_res.dga_score)
+                        reason = f"DGA Domain Detected: {dga_res.reason} (Domain: {dga_res.domain})"
+
+            # D. Malware in Encrypted Sessions (TLS/QUIC Passive Metadata Anomaly - No Decryption)
+            if decision in ("BENIGN", "ANOMALOUS", "SUSPICIOUS") or threat_class in ("BENIGN", "OTHER_ATTACK"):
+                tls_res = self.tls_detector.analyze_flow(feat_dict, metadata)
+                if tls_res.is_anomalous or (metadata or {}).get("attack_type") in ("encrypted_anomaly", "tls_metadata"):
+                    decision = "MALICIOUS"
+                    threat_class = "ENCRYPTED_MALWARE_METADATA"
+                    confidence = max(confidence, 0.90 if tls_res.score < 0.90 else tls_res.score)
+                    reason = f"Encrypted Session Anomaly: {tls_res.reason} Evidence: {'; '.join(tls_res.evidence)}"
+
+            # E. Reconnaissance Port Scan Check
+            if (metadata or {}).get("attack_type") == "port_scan" or threat_class == "PORT_SCAN":
+                decision = "MALICIOUS"
+                threat_class = "PORT_SCAN"
+                confidence = max(confidence, 0.96)
+                reason = "Reconnaissance Port Scan Detected: High-frequency SYN probes targeting port range without application handshake."
+
+            # F. Volumetric Flood / SYN Flood Check (PS-26145 Threat 1)
+            elif decision in ("BENIGN", "ANOMALOUS", "SUSPICIOUS") or threat_class in ("BENIGN", "OTHER_ATTACK"):
+                syn_flags = float(feat_dict.get("SYN Flag Count", 0.0))
+                flow_pkts_s = float(feat_dict.get("Flow Packets/s", 0.0))
+                total_fwd_pkts = float(feat_dict.get("Total Fwd Packets", 0.0))
+                bwd_pkts = float(feat_dict.get("Total Backward Packets", 0.0))
+                dst_p = str((metadata or {}).get("dst_port") or feat_dict.get("Destination Port", 80))
+                if syn_flags >= 50 or (flow_pkts_s >= 5000 and total_fwd_pkts >= 50) or (total_fwd_pkts >= 100 and bwd_pkts == 0):
+                    decision = "MALICIOUS"
+                    threat_class = "DDOS"
+                    confidence = max(confidence, 0.98)
+                    reason = f"Volumetric SYN Flood Detected: High SYN rate ({syn_flags:.0f} SYN flags, {flow_pkts_s:.1f} pkts/s) targeting port {dst_p} with zero ACK response."
 
         return DecisionResult(
             decision=decision,

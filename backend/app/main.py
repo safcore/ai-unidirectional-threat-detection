@@ -14,6 +14,9 @@ from typing import Any
 # Ensure backend directory is in sys.path when started from ps145 root or backend
 current_dir = os.path.dirname(os.path.abspath(__file__))  # backend/app
 backend_dir = os.path.dirname(current_dir)                # backend
+project_root = os.path.dirname(backend_dir)               # project root
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 

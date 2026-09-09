@@ -107,9 +107,9 @@ class MITREAttackMapper:
                     mapping_basis="High-volume packet flood flow measurements",
                 ))
 
-        # 5. BOTNET / INFILTRATION -> Require explicit port/protocol evidence
-        elif "BOTNET" in threat_class:
-            if dst_port in [80, 443, 8080, 6667]:  # Specific HTTP/C2 protocol evidence
+        # 5. BOTNET / C2 / INFILTRATION -> Require explicit port/protocol evidence
+        elif "BOTNET" in threat_class or "C2" in threat_class:
+            if dst_port in [80, 443, 8080, 8443, 6667]:  # Specific HTTP/C2 protocol evidence
                 tech = self.store.get_technique("T1071")
                 if tech:
                     mappings.append(MITREMapping(
@@ -118,7 +118,7 @@ class MITREAttackMapper:
                         tactic=tech["tactic"],
                         confidence=round(confidence * 0.85, 4),
                         reason="Botnet command & control communication over standard web ports.",
-                        evidence=["threat_class: BOTNET", f"dst_port: {dst_port}"],
+                        evidence=["threat_class: " + threat_class, f"dst_port: {dst_port}"],
                         mapping_basis="Application layer protocol C2 flow pattern",
                     ))
             else:
@@ -143,5 +143,47 @@ class MITREAttackMapper:
                 evidence=["threat_class: INFILTRATION"],
                 mapping_basis="Unverified infiltration flow label",
             ))
+
+        # 6. DATA_EXFILTRATION -> T1048 (Exfiltration Over Alternative Protocol)
+        elif "EXFILTRATION" in threat_class or threat_class == "DATA_EXFILTRATION":
+            tech = self.store.get_technique("T1048")
+            if tech:
+                mappings.append(MITREMapping(
+                    technique_id="T1048",
+                    technique_name=tech["technique_name"],
+                    tactic=tech["tactic"],
+                    confidence=round(confidence * 0.95, 4),
+                    reason="Asymmetric outbound data transfer indicating unauthorized data exfiltration.",
+                    evidence=["threat_class: " + threat_class, f"dst_port: {dst_port}"],
+                    mapping_basis="Flow-level outbound volume asymmetry measurement",
+                ))
+
+        # 7. DNS_TUNNEL / DGA -> T1071 (Application Layer Protocol: DNS) / T1048
+        elif "DNS" in threat_class or "DGA" in threat_class:
+            tech = self.store.get_technique("T1071")
+            if tech:
+                mappings.append(MITREMapping(
+                    technique_id="T1071",
+                    technique_name="Application Layer Protocol: DNS",
+                    tactic="Command and Control",
+                    confidence=round(confidence * 0.90, 4),
+                    reason="Observed high-entropy or tunneling patterns in DNS communication.",
+                    evidence=["threat_class: " + threat_class, f"dst_port: {dst_port}"],
+                    mapping_basis="DNS payload length and entropy analysis",
+                ))
+
+        # 8. ENCRYPTED_MALWARE_METADATA -> T1573 (Encrypted Channel)
+        elif "ENCRYPTED" in threat_class or "TLS" in threat_class:
+            tech = self.store.get_technique("T1573")
+            if tech:
+                mappings.append(MITREMapping(
+                    technique_id="T1573",
+                    technique_name=tech["technique_name"],
+                    tactic=tech["tactic"],
+                    confidence=round(confidence * 0.90, 4),
+                    reason="Passive metadata analysis indicates automated command & control beaconing inside encrypted session.",
+                    evidence=["threat_class: " + threat_class, f"dst_port: {dst_port}"],
+                    mapping_basis="Passive TLS/QUIC packet timing and length variance without decryption",
+                ))
 
         return mappings

@@ -1,0 +1,106 @@
+{
+  "benchmark_timestamp": "2026-09-06T08:11:31Z",
+  "hardware_environment": {
+    "platform": "win32",
+    "python_version": "3.14.2"
+  },
+  "pipeline_stages": [
+    "M1/M2: Ingestion & Feature Normalization (adapt_to_canonical_66)",
+    "M3: Supervised Classification (Random Forest / DDoS / PortScan)",
+    "M4: Behavioral Anomaly Detection & Investigation (Isolation Forest, C2, DGA, Exfil, TLS)",
+    "M5: Canonical Alert Normalization (shared/alert_schema.json)"
+  ],
+  "batches": {
+    "1000": {
+      "flows_processed": 1000,
+      "elapsed_sec": 1.4953,
+      "throughput_fps": 668.77,
+      "latency_ms": {
+        "mean": 1.4946,
+        "p50": 1.4946,
+        "p90": 1.6031,
+        "p95": 1.6031,
+        "p99": 1.6031,
+        "min": 1.3862,
+        "max": 1.6031
+      },
+      "alerts_generated": 1000,
+      "threat_counts": {
+        "DDoS": 83,
+        "Benign Traffic": 753,
+        "DoS": 108,
+        "Web Attack": 1,
+        "Brute Force": 3,
+        "Port Scan": 51,
+        "Data Exfiltration": 1
+      },
+      "errors": 0,
+      "error_rate_pct": 0.0
+    },
+    "5000": {
+      "flows_processed": 5000,
+      "elapsed_sec": 11.872,
+      "throughput_fps": 421.16,
+      "latency_ms": {
+        "mean": 2.3733,
+        "p50": 2.4214,
+        "p90": 2.6989,
+        "p95": 2.9211,
+        "p99": 2.9211,
+        "min": 1.8553,
+        "max": 2.9211
+      },
+      "alerts_generated": 5000,
+      "threat_counts": {
+        "DDoS": 414,
+        "Benign Traffic": 3712,
+        "DoS": 569,
+        "Web Attack": 9,
+        "Brute Force": 13,
+        "Port Scan": 282,
+        "Data Exfiltration": 1
+      },
+      "errors": 0,
+      "error_rate_pct": 0.0
+    },
+    "10000": {
+      "flows_processed": 10000,
+      "elapsed_sec": 42.3871,
+      "throughput_fps": 235.92,
+      "latency_ms": {
+        "mean": 4.2373,
+        "p50": 4.2498,
+        "p90": 4.7063,
+        "p95": 5.3086,
+        "p99": 5.805,
+        "min": 3.0053,
+        "max": 5.805
+      },
+      "alerts_generated": 10000,
+      "threat_counts": {
+        "DDoS": 832,
+        "Benign Traffic": 7352,
+        "DoS": 1180,
+        "Web Attack": 15,
+        "Brute Force": 49,
+        "Port Scan": 571,
+        "Data Exfiltration": 1
+      },
+      "errors": 0,
+      "error_rate_pct": 0.0
+    }
+  },
+  "summary": {
+    "tested_scales": [
+      1000,
+      5000,
+      10000
+    ],
+    "peak_throughput_fps": 668.77,
+    "average_p50_latency_ms": 2.7219,
+    "average_p95_latency_ms": 3.2776,
+    "total_flows_evaluated": 16000,
+    "total_alerts_generated": 16000,
+    "total_errors": 0
+  }
+}

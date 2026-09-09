@@ -1,136 +1,82 @@
+import { useMemo } from 'react'
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
 } from 'recharts'
 
-
 function ThreatActivity({ alerts = [] }) {
-
-  const timeCounts = alerts.reduce(
-    (counts, alert) => {
-
-      const date =
-        new Date(alert.timestamp)
-
-      const time =
-        date.toLocaleTimeString(
-          [],
-          {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          }
-        )
-
-      counts[time] =
-        (counts[time] || 0) + 1
-
+  const data = useMemo(() => {
+    const timeCounts = alerts.reduce((counts, alert) => {
+      const date = new Date(alert.timestamp)
+      const time = date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })
+      counts[time] = (counts[time] || 0) + 1
       return counts
+    }, {})
 
-    },
-    {}
-  )
-
-
-  const data = Object.entries(
-    timeCounts
-  )
-    .sort(
-      ([timeA], [timeB]) =>
-        timeA.localeCompare(timeB)
-    )
-    .map(
-      ([time, threats]) => ({
+    return Object.entries(timeCounts)
+      .sort(([timeA], [timeB]) => timeA.localeCompare(timeB))
+      .map(([time, threats]) => ({
         time,
         threats,
-      })
-    )
-
+      }))
+  }, [alerts])
 
   return (
-    <section className="chart-card">
-
-      <div className="chart-header">
-
-        <div>
-
-          <h2>Threat Activity</h2>
-
-          <p>
-            Detected threats over time
-          </p>
-
+    <div className="viz-card">
+      <div className="viz-header">
+        <span className="viz-title">Threat Activity</span>
+        <div className="live-pill">
+          <span className="dot dot-green"></span>
+          <span>Live</span>
         </div>
-
       </div>
 
-
-      <div className="chart-container">
-
+      <div className="viz-body">
         {data.length > 0 ? (
-
-          <ResponsiveContainer
-            width="100%"
-            height={280}
-          >
-
-            <LineChart data={data}>
-
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#1f2937"
-              />
-
-              <XAxis
-                dataKey="time"
-                stroke="#64748b"
-              />
-
-              <YAxis
-                stroke="#64748b"
-                allowDecimals={false}
-              />
-
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={data} margin={{ top: 8, right: 12, left: -24, bottom: 0 }}>
+              <defs>
+                <linearGradient id="actGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+              <XAxis dataKey="time" stroke="#475569" tick={{ fontSize: 10 }} />
+              <YAxis stroke="#475569" allowDecimals={false} tick={{ fontSize: 10 }} />
               <Tooltip
                 contentStyle={{
-                  background: '#0d111a',
-                  border: '1px solid #26364a',
-                  borderRadius: '8px',
-                  color: '#e6edf7',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  color: '#f8fafc',
                 }}
               />
-
-              <Line
+              <Area
                 type="monotone"
                 dataKey="threats"
-                stroke="#60a5fa"
-                strokeWidth={3}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                stroke="#0ea5e9"
+                strokeWidth={2}
+                fill="url(#actGradient)"
               />
-
-            </LineChart>
-
+            </AreaChart>
           </ResponsiveContainer>
-
         ) : (
-
-          <div className="no-chart-data">
-            No threat activity data available.
-          </div>
-
+          <div className="viz-empty">No activity data</div>
         )}
-
       </div>
-
-    </section>
+    </div>
   )
 }
-
 
 export default ThreatActivity

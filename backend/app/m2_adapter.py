@@ -54,4 +54,16 @@ def process_flow(m2_output: Any) -> tuple[dict[str, Any], Any, dict[str, Any]]:
 
     stored = alert_store.add(alert)
     stream_manager.broadcast(stored)
+
+    try:
+        from .flow_store import flow_store
+        flow_store.record_flow(
+            features=features,
+            metadata=metadata,
+            detection=event,
+            alert_id=stored.get("alert_id") if stored else None,
+        )
+    except Exception:
+        pass
+
     return event, incident, stored
