@@ -14,7 +14,11 @@ import app.m2_adapter as m2_adapter
 
 
 def _features() -> dict[str, float]:
-    schema_path = Path(__file__).resolve().parents[2] / "ml" / "models" / "feature_schema.json"
+    project_root = next(
+        (p for p in Path(__file__).resolve().parents if (p / "ml" / "models" / "feature_schema.json").exists()),
+        Path(__file__).resolve().parents[3],
+    )
+    schema_path = project_root / "ml" / "models" / "feature_schema.json"
     with schema_path.open(encoding="utf-8") as schema_file:
         names = json.load(schema_file)["ml_feature_names"]
     return {name: 0.0 for name in names}

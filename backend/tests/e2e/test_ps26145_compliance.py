@@ -20,7 +20,10 @@ from m4_threat_classifier.detection.exfiltration_detector import ExfiltrationDet
 from backend.app.m4_integration import process_detection
 from backend.app.attack_service import attack_service, VALID_ATTACK_TYPES
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = next(
+    (p for p in Path(__file__).resolve().parents if (p / "backend").exists() and (p / "data").exists()),
+    Path(__file__).resolve().parents[3],
+)
 TEST_CSV_PATH = PROJECT_ROOT / "data" / "datasets" / "test.csv"
 if not TEST_CSV_PATH.exists():
     TEST_CSV_PATH = (
