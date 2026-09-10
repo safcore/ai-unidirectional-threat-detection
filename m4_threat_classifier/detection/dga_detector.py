@@ -91,7 +91,17 @@ class DGADetector:
             score += 0.15
             reasons.append(f"Unusual vowel-consonant ratio ({vowel_consonant_ratio:.2f})")
 
-        # 5. TLD bonus
+        # 5. Character N-gram Distribution (Bi-gram & Tri-gram uniqueness)
+        ngram_2_unique = float(raw_feats.get("ngram_2_unique_ratio", 0.0))
+        ngram_3_unique = float(raw_feats.get("ngram_3_unique_ratio", 0.0))
+        if label_len >= 10 and ngram_2_unique >= 0.85:
+            score += 0.20
+            reasons.append(f"High bi-gram uniqueness ratio ({ngram_2_unique:.2f})")
+        if label_len >= 12 and ngram_3_unique >= 0.90:
+            score += 0.15
+            reasons.append(f"High tri-gram diversity ({ngram_3_unique:.2f})")
+
+        # 6. TLD bonus
         if has_suspicious_tld:
             score += 0.15
             reasons.append("Suspicious Top-Level Domain (TLD)")
@@ -113,6 +123,8 @@ class DGADetector:
             "digit_ratio": digit_ratio,
             "unique_char_ratio": unique_char_ratio,
             "vowel_consonant_ratio": vowel_consonant_ratio,
+            "ngram_2_unique_ratio": ngram_2_unique,
+            "ngram_3_unique_ratio": ngram_3_unique,
         }
 
         return DGAResult(

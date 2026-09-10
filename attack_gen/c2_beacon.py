@@ -3,6 +3,10 @@ attack_gen/c2_beacon.py
 ========================
 Command & Control (C2) Beaconing Simulator for PS-26145 demonstration.
 Simulates periodic keep-alive telemetry with low jitter to common C2/IRC ports.
+
+TEST-ONLY MODULE / SIMULATION HARNESS:
+This generator is strictly for offline testing, dataset generation, and pipeline
+benchmarking in controlled lab environments. It is never active in production ingress.
 """
 
 from __future__ import annotations

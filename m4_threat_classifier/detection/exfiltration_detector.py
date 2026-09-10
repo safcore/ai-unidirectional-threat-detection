@@ -77,11 +77,30 @@ class ExfiltrationDetector:
         if fwd_bytes >= 1_000_000:  # > 1 MB
             score += 0.30
             evidence.append(f"High total outbound volume ({fwd_bytes / (1024*1024):.2f} MB)")
+        elif fwd_bytes >= 100_000:  # > 100 KB
+            score += 0.20
+            evidence.append(f"Elevated outbound volume ({fwd_bytes / 1024:.1f} KB)")
 
-        # 4. DNS Tunneling signal: High outbound byte ratio over DNS port 53
-        if dst_port_int == 53 and fwd_bytes > 2000:
-            score += 0.35
-            evidence.append(f"High outbound payload volume over DNS port 53 (DNS Tunneling indicator)")
+        # 4. DNS Tunneling signal: High outbound byte ratio over DNS port 53 or encapsulated query metrics
+        if dst_port_int == 53:
+            if fwd_bytes > 2000:
+                score += 0.35
+                evidence.append(f"High outbound payload volume over DNS port 53 ({fwd_bytes/1024:.1f} KB - DNS Tunneling indicator)")
+            elif fwd_bytes > 500:
+                score += 0.20
+                evidence.append(f"Elevated outbound DNS payload volume ({fwd_bytes} bytes)")
+
+            # Check query domain characteristics if available in metadata
+            query_domain = str((metadata or {}).get("domain") or (metadata or {}).get("query_name") or "")
+            if query_domain:
+                labels = query_domain.split(".")
+                max_label_len = max(len(l) for l in labels) if labels else 0
+                if len(query_domain) >= 45 or max_label_len >= 30:
+                    score += 0.30
+                    evidence.append(f"Anomalously long DNS query hostname ({len(query_domain)} chars, max label: {max_label_len})")
+                if len(labels) >= 4:
+                    score += 0.15
+                    evidence.append(f"Excessive subdomain nesting depth ({len(labels)} labels)")
 
         final_score = round(min(score, 1.0), 4)
 

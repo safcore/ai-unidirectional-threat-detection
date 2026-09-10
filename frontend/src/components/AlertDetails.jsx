@@ -500,12 +500,19 @@ function AlertDetails({ alert, onClose, onInvestigateIp = null, onFilterMitre = 
           {/* SECTION 1: INCIDENT VERDICT (HERO PANEL) */}
           <div className="incident-verdict-hero">
             <div className="hero-verdict-head">
-              <div className="verdict-label-bar">
-                <span className="verdict-header-label">NETRION AUTHORITATIVE VERDICT</span>
+              <div className="verdict-brand-lockup">
+                <div className="verdict-label-bar">
+                  <ShieldAlert size={14} className="verdict-shield-icon" />
+                  <span className="verdict-header-label">NETRION AUTHORITATIVE VERDICT</span>
+                </div>
+                <div className={`verdict-badge-large verdict-${sev.toLowerCase()}`}>
+                  {sev === 'CRITICAL' ? <AlertTriangle size={14} /> : <ShieldAlert size={14} />}
+                  <span>{sev} THREAT DETECTED</span>
+                </div>
               </div>
-              <div className={`verdict-badge-large verdict-${sev.toLowerCase()}`}>
-                {sev === 'CRITICAL' ? <AlertTriangle size={15} /> : <ShieldAlert size={15} />}
-                <span>{sev} THREAT DETECTED</span>
+              <div className="verdict-status-tag">
+                <span className="verdict-status-dot" />
+                <span>UNIDIRECTIONAL DIODE TELEMETRY</span>
               </div>
             </div>
 

@@ -3,6 +3,10 @@ attack_gen/data_exfiltration.py
 ================================
 Data Exfiltration Simulator for PS-26145 demonstration.
 Simulates high-volume asymmetric outbound data transfer.
+
+TEST-ONLY MODULE / SIMULATION HARNESS:
+This generator is strictly for offline testing, dataset generation, and pipeline
+benchmarking in controlled lab environments. It is never active in production ingress.
 """
 
 from __future__ import annotations

@@ -29,8 +29,21 @@ from .alert_store import AlertStore
 from .stream import StreamManager
 from .ai_service import AIService
 
-# Module-level singletons — shared across routes
-alert_store = AlertStore()
+# Initialize storage layer (PostgreSQL if DATABASE_URL is set, else local JSON)
+db_url = os.environ.get("DATABASE_URL", "").strip()
+if db_url and db_url.startswith("postgres"):
+    try:
+        from .postgres_store import PostgresAlertStore
+        alert_store = PostgresAlertStore(db_url)
+        import logging
+        logging.getLogger(__name__).info("Connected to PostgreSQL alert store: %s", db_url.split("@")[-1])
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("Failed to connect to PostgreSQL (%s), falling back to local JSON store.", exc)
+        alert_store = AlertStore()
+else:
+    alert_store = AlertStore()
+
 stream_manager = StreamManager()
 ai_service = AIService()
 

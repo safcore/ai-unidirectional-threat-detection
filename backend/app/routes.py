@@ -1026,13 +1026,15 @@ def start_test_traffic():
 @api_bp.route("/api/traffic/live-sample", methods=["POST"])
 @api_bp.route("/api/traffic/live-inspect", methods=["POST"])
 def live_traffic_sample():
-    """Query live traffic status and metrics from flow_store without fake telemetry."""
+    """Query in-memory flow_store metrics from stored PCAP or test traffic without fake telemetry."""
     try:
         from .flow_store import flow_store
         stats = flow_store.get_stats()
         return jsonify({
-            "status": "ACTIVE_MONITORING",
-            "interface": "diode0 (Passive Ingress Mirror)",
+            "status": "STORED_PCAP_OR_TEST_MONITORING",
+            "traffic_source": "STORED PCAP / OFFLINE TEST TRAFFIC",
+            "live_network_capture": "NOT IMPLEMENTED",
+            "interface": "diode0 (Simulated RX Tap)",
             "total_flows": stats["total_flows"],
             "total_packets": stats["total_packets"],
             "total_bytes": stats["total_bytes"],
@@ -1046,12 +1048,14 @@ def live_traffic_sample():
 
 @api_bp.route("/api/traffic/status", methods=["GET"])
 def traffic_status():
-    """Get live status of observed traffic in the system."""
+    """Get status of observed stored PCAP / test traffic in the flow store."""
     try:
         from .flow_store import flow_store
         stats = flow_store.get_stats()
         stats["hardware_rx_only"] = True
-        stats["interface"] = "diode0 (Passive Ingress Mirror)"
+        stats["traffic_source"] = "STORED PCAP / OFFLINE TEST TRAFFIC"
+        stats["live_network_capture"] = "NOT IMPLEMENTED"
+        stats["interface"] = "diode0 (Simulated RX Tap)"
         return jsonify(stats), 200
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500

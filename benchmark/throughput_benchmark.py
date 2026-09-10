@@ -237,12 +237,36 @@ def run_full_benchmark(
         "total_errors": sum(b["errors"] for b in results["batches"].values()),
     }
 
-    out_file = Path(output_path) if output_path else PROJECT_ROOT / "benchmark" / "benchmark_results.json"
+    out_file = Path(output_path) if output_path else PROJECT_ROOT / "reports" / "performance" / "latest_benchmark.json"
     out_file.parent.mkdir(parents=True, exist_ok=True)
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
 
-    logger.info("Benchmark results saved to: %s", out_file)
+    # Also keep benchmark/benchmark_results.json updated
+    backup_file = PROJECT_ROOT / "benchmark" / "benchmark_results.json"
+    backup_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(backup_file, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2)
+
+    # Generate reports/performance/latest_benchmark.md
+    md_file = PROJECT_ROOT / "reports" / "performance" / "latest_benchmark.md"
+    with open(md_file, "w", encoding="utf-8") as f:
+        f.write("# PS-26145 Real Execution Performance Benchmark\n\n")
+        f.write(f"- **Timestamp**: {results['benchmark_timestamp']}\n")
+        f.write(f"- **Platform**: {results['hardware_environment']['platform']}\n")
+        f.write(f"- **Python**: {results['hardware_environment']['python_version']}\n")
+        f.write(f"- **Peak Pipeline Throughput**: {results['summary']['peak_throughput_fps']:.2f} flows/sec\n")
+        f.write(f"- **Average P50 Latency**: {results['summary']['average_p50_latency_ms']:.4f} ms\n")
+        f.write(f"- **Average P95 Latency**: {results['summary']['average_p95_latency_ms']:.4f} ms\n")
+        f.write(f"- **Total Flows Evaluated**: {results['summary']['total_flows_evaluated']}\n")
+        f.write(f"- **Total Alerts Emitted**: {results['summary']['total_alerts_generated']}\n\n")
+        f.write("## Detailed Batch Metrics\n\n")
+        f.write("| Batch Scale | Throughput (flows/s) | Mean Latency (ms) | P50 (ms) | P95 (ms) | P99 (ms) | Alerts | Error Rate |\n")
+        f.write("|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|\n")
+        for sz, b in results["batches"].items():
+            f.write(f"| {sz} flows | {b['throughput_fps']:.2f} | {b['latency_ms']['mean']:.4f} | {b['latency_ms']['p50']:.4f} | {b['latency_ms']['p95']:.4f} | {b['latency_ms']['p99']:.4f} | {b['alerts_generated']} | {b['error_rate_pct']}% |\n")
+
+    logger.info("Benchmark results saved to: %s and %s", out_file, md_file)
     return results
 
 

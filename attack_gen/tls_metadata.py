@@ -4,6 +4,10 @@ attack_gen/tls_metadata.py
 Encrypted Session Metadata Anomaly Simulator for PS-26145 demonstration.
 Simulates passive observable metadata characteristics of an encrypted C2 channel
 (uniform packet sizes, low jitter, fixed beaconing) without payload decryption.
+
+TEST-ONLY MODULE / SIMULATION HARNESS:
+This generator is strictly for offline testing, dataset generation, and pipeline
+benchmarking in controlled lab environments. It is never active in production ingress.
 """
 
 from __future__ import annotations

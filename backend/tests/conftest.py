@@ -20,11 +20,61 @@ from app import create_app, alert_store as _default_store
 from app.alert_store import AlertStore
 
 
+@pytest.fixture(autouse=True)
+def isolate_alert_store(tmp_path, monkeypatch):
+    """Ensure every test in the entire test suite runs with an isolated AlertStore."""
+    isolated = AlertStore(data_path=str(tmp_path / "test_alerts.json"))
+
+    # Patch in app module
+    monkeypatch.setattr(app_module, "alert_store", isolated)
+
+    # Patch in routes
+    try:
+        import app.routes as routes_mod
+        monkeypatch.setattr(routes_mod, "alert_store", isolated)
+    except Exception:
+        pass
+
+    # Patch in ai_routes
+    try:
+        import app.ai_routes as ai_mod
+        monkeypatch.setattr(ai_mod, "alert_store", isolated)
+    except Exception:
+        pass
+
+    # Patch in attack_service
+    try:
+        import app.attack_service as atk_mod
+        monkeypatch.setattr(atk_mod, "alert_store", isolated)
+    except Exception:
+        pass
+
+    # Patch in backend.app (if imported under alternate name)
+    try:
+        import backend.app as b_app
+        monkeypatch.setattr(b_app, "alert_store", isolated)
+    except Exception:
+        pass
+
+    try:
+        import backend.app.routes as b_routes
+        monkeypatch.setattr(b_routes, "alert_store", isolated)
+    except Exception:
+        pass
+
+    yield isolated
+    # Teardown: ensure any background attack simulation threads are stopped and joined
+    try:
+        import app.attack_service as atk_mod
+        atk_mod.attack_service.stop_all()
+    except Exception:
+        pass
+
+
 @pytest.fixture()
-def tmp_store(tmp_path):
-    """An AlertStore backed by a temp file — isolated per test."""
-    store = AlertStore(data_path=str(tmp_path / "alerts.json"))
-    return store
+def tmp_store(isolate_alert_store):
+    """Alias for backwards compatibility with tests requesting tmp_store fixture."""
+    return isolate_alert_store
 
 
 @pytest.fixture()
@@ -33,19 +83,40 @@ def client(tmp_store, monkeypatch):
     A Flask test client wired to an isolated tmp_store and fresh stream_manager.
     Monkeypatches the module-level singletons so routes use the temp store.
     """
-    monkeypatch.setattr(app_module, "alert_store", tmp_store)
-
-    # Also patch inside routes
-    import app.routes as routes_module
-    monkeypatch.setattr(routes_module, "alert_store", tmp_store)
-
-    # Patch alert_store inside ai_routes too
-    import app.ai_routes as ai_routes_module
-    monkeypatch.setattr(ai_routes_module, "alert_store", tmp_store)
-
-    # Patch alert_store inside attack_service too
-    import app.attack_service as attack_service_module
-    monkeypatch.setattr(attack_service_module, "alert_store", tmp_store)
+    # Disable real external network AI calls during unit/integration tests
+    from unittest.mock import MagicMock
+    mock_ai = MagicMock()
+    mock_ai.analyze_alert.return_value = {
+        "ai_summary": "Test mock analysis",
+        "threat_assessment": "Test assessment",
+        "risk_level": "LOW",
+        "confidence": 0.85,
+        "why_suspicious": "Test reason",
+        "attack_stage": "Test stage",
+        "mitre_context": "Test context",
+        "recommended_actions": ["Action 1"],
+        "investigation_priority": "LOW",
+    }
+    mock_ai.correlate_alerts.return_value = {
+        "related": False,
+        "confidence": 0.5,
+        "summary": "Mock correlation",
+        "common_indicators": [],
+        "possible_attack_chain": [],
+        "recommended_actions": [],
+    }
+    mock_ai.health.return_value = {
+        "ai_enabled": True,
+        "provider": "MOCK",
+        "status": "available",
+        "model": "mock",
+    }
+    try:
+        import app.ai_routes as ai_routes_module
+        monkeypatch.setattr(ai_routes_module, "ai_service", mock_ai)
+    except Exception:
+        pass
+    monkeypatch.setattr(app_module, "ai_service", mock_ai)
 
     flask_app = create_app({"TESTING": True})
     flask_app.config["TESTING"] = True

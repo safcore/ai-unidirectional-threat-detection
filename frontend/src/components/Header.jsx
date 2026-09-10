@@ -72,7 +72,7 @@ function Header({
           ></span>
           <span>
             {streamState === 'connected'
-              ? 'Live Detection'
+              ? 'SSE Stream Active'
               : streamState === 'reconnecting'
               ? 'Reconnecting...'
               : 'Detection Offline'}

@@ -152,11 +152,11 @@ export default function RealTrafficAnalysis({ onSelectAlert, alerts = [], target
       const totalP = res.total_packets ?? 'N/A'
       setStatusNotice({
         type: 'info',
-        text: `Live Ingress Mirror (${res.interface || 'diode0'}): ${totalP} packets observed, ${totalF} active flows in memory.`,
+        text: `In-Memory Flow Store (${res.interface || 'diode0'}): ${totalP} packets observed, ${totalF} active flows in memory. (Stored PCAP / Test Traffic)`,
       })
       setTimeout(() => setStatusNotice(null), 7000)
     } catch (err) {
-      setErrorMsg(formatErrorMessage(err, 'Live traffic check failed'))
+      setErrorMsg(formatErrorMessage(err, 'Flow store check failed'))
     } finally {
       setActionLoading(false)
     }
@@ -264,9 +264,9 @@ export default function RealTrafficAnalysis({ onSelectAlert, alerts = [], target
     <section className="real-traffic-section">
       <div className="real-traffic-header">
         <div className="real-traffic-title-wrap">
-          <h2>REAL TRAFFIC ANALYSIS</h2>
+          <h2>STORED PCAP TRAFFIC ANALYSIS</h2>
           <p className="real-traffic-subtitle">
-            Analyze observed traffic by source IP
+            Analyze observed traffic by source IP (Stored PCAP / Test Simulation)
           </p>
         </div>
 
@@ -284,10 +284,10 @@ export default function RealTrafficAnalysis({ onSelectAlert, alerts = [], target
             className="secondary-flow-btn"
             onClick={handleInspectLive}
             disabled={actionLoading}
-            title="Inspect passive live traffic status"
+            title="Inspect current in-memory flow store status"
           >
             <Activity size={14} />
-            <span>LIVE TRAFFIC</span>
+            <span>FLOW STORE STATUS</span>
           </button>
 
           <button

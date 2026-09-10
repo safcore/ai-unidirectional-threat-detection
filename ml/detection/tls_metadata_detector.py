@@ -43,6 +43,145 @@ class TLSMetadataResult:
         return asdict(self)
 
 
+# GREASE values defined in RFC 8701
+GREASE_VALUES = {
+    0x0A0A, 0x1A1A, 0x2A2A, 0x3A3A, 0x4A4A, 0x5A5A, 0x6A6A, 0x7A7A,
+    0x8A8A, 0x9A9A, 0xAAAA, 0xBABA, 0xCACA, 0xDADA, 0xEAEA, 0xFAFA,
+}
+
+
+def parse_tls_client_hello(payload: bytes) -> Optional[Dict[str, Any]]:
+    """
+    Passively parse a TLS ClientHello record from raw mirrored packet payload.
+    Does NOT decrypt or modify traffic; operates purely on observable cleartext headers.
+    
+    Returns None if payload is not a valid TLS ClientHello or contains insufficient bytes.
+    """
+    if not payload or len(payload) < 42:
+        return None
+
+    try:
+        # TLS Record layer: Content Type (1 byte: 0x16 = Handshake), Version (2 bytes), Length (2 bytes)
+        content_type = payload[0]
+        if content_type != 0x16:
+            return None
+
+        record_len = (payload[3] << 8) | payload[4]
+        if len(payload) < 5 + record_len:
+            # Fragmented packet; evaluate available slice
+            payload_slice = payload[5:]
+        else:
+            payload_slice = payload[5 : 5 + record_len]
+
+        # Handshake Type (1 byte: 0x01 = ClientHello)
+        if len(payload_slice) < 38 or payload_slice[0] != 0x01:
+            return None
+
+        # Handshake Length (3 bytes)
+        # hs_len = (payload_slice[1] << 16) | (payload_slice[2] << 8) | payload_slice[3]
+
+        # Client Version (2 bytes)
+        client_version = (payload_slice[4] << 8) | payload_slice[5]
+
+        # Skip Random (32 bytes: 6..38)
+        offset = 38
+        if len(payload_slice) <= offset:
+            return None
+
+        # Session ID Length (1 byte)
+        session_id_len = payload_slice[offset]
+        offset += 1 + session_id_len
+        if len(payload_slice) <= offset + 2:
+            return None
+
+        # Cipher Suites Length (2 bytes)
+        cipher_len = (payload_slice[offset] << 8) | payload_slice[offset + 1]
+        offset += 2
+        if len(payload_slice) < offset + cipher_len:
+            return None
+
+        ciphers: List[int] = []
+        for i in range(0, cipher_len, 2):
+            c = (payload_slice[offset + i] << 8) | payload_slice[offset + i + 1]
+            if c not in GREASE_VALUES:
+                ciphers.append(c)
+        offset += cipher_len
+
+        # Compression Methods
+        if len(payload_slice) <= offset:
+            return None
+        comp_len = payload_slice[offset]
+        offset += 1 + comp_len
+
+        # Extensions
+        extensions: List[int] = []
+        curves: List[int] = []
+        point_formats: List[int] = []
+        sni: Optional[str] = None
+        has_supported_versions_13 = False
+
+        if len(payload_slice) > offset + 2:
+            ext_total_len = (payload_slice[offset] << 8) | payload_slice[offset + 1]
+            offset += 2
+            ext_end = min(offset + ext_total_len, len(payload_slice))
+
+            while offset + 4 <= ext_end:
+                ext_type = (payload_slice[offset] << 8) | payload_slice[offset + 1]
+                ext_len = (payload_slice[offset + 2] << 8) | payload_slice[offset + 3]
+                offset += 4
+
+                if ext_type not in GREASE_VALUES:
+                    extensions.append(ext_type)
+
+                ext_data = payload_slice[offset : offset + ext_len]
+                offset += ext_len
+
+                # SNI (Extension 0)
+                if ext_type == 0 and len(ext_data) >= 5:
+                    sni_name_len = (ext_data[3] << 8) | ext_data[4]
+                    if len(ext_data) >= 5 + sni_name_len:
+                        try:
+                            sni = ext_data[5 : 5 + sni_name_len].decode("utf-8", errors="ignore")
+                        except Exception:
+                            pass
+
+                # Supported Groups / Elliptic Curves (Extension 10)
+                elif ext_type == 10 and len(ext_data) >= 2:
+                    groups_len = (ext_data[0] << 8) | ext_data[1]
+                    for g_idx in range(2, min(2 + groups_len, len(ext_data)), 2):
+                        group = (ext_data[g_idx] << 8) | ext_data[g_idx + 1]
+                        if group not in GREASE_VALUES:
+                            curves.append(group)
+
+                # EC Point Formats (Extension 11)
+                elif ext_type == 11 and len(ext_data) >= 1:
+                    ec_len = ext_data[0]
+                    for p_idx in range(1, min(1 + ec_len, len(ext_data))):
+                        point_formats.append(ext_data[p_idx])
+
+                # Supported Versions (Extension 43 / 0x002b)
+                elif ext_type == 43 and len(ext_data) >= 1:
+                    sv_len = ext_data[0]
+                    for v_idx in range(1, min(1 + sv_len, len(ext_data)), 2):
+                        if v_idx + 1 < len(ext_data):
+                            ver = (ext_data[v_idx] << 8) | ext_data[v_idx + 1]
+                            if ver == 0x0304:  # TLS 1.3
+                                has_supported_versions_13 = True
+
+        return {
+            "version": client_version,
+            "has_tls13": has_supported_versions_13,
+            "ciphers": ciphers,
+            "extensions": extensions,
+            "curves": curves,
+            "point_formats": point_formats,
+            "sni": sni,
+        }
+    except Exception as exc:
+        logger.debug("Passive TLS parse exception: %s", exc)
+        return None
+
+
 class TLSMetadataDetector:
     """
     Passive TLS & QUIC Metadata Anomaly Detector.
@@ -67,17 +206,57 @@ class TLSMetadataDetector:
         point_formats: List[int],
     ) -> Tuple[str, str]:
         """
-        Compute JA3 string and MD5 hash strictly from observable handshake fields.
+        Compute standard JA3 string and MD5 hash strictly from observable handshake fields.
+        Filters GREASE values in conformance with Salesforce JA3 specification.
         Does NOT decrypt application data.
         """
-        ciphers_str = "-".join(str(c) for c in ciphers)
-        extensions_str = "-".join(str(e) for e in extensions)
-        curves_str = "-".join(str(c) for c in curves)
+        filtered_ciphers = [c for c in ciphers if c not in GREASE_VALUES]
+        filtered_exts = [e for e in extensions if e not in GREASE_VALUES]
+        filtered_curves = [c for c in curves if c not in GREASE_VALUES]
+
+        ciphers_str = "-".join(str(c) for c in filtered_ciphers)
+        extensions_str = "-".join(str(e) for e in filtered_exts)
+        curves_str = "-".join(str(c) for c in filtered_curves)
         point_formats_str = "-".join(str(p) for p in point_formats)
 
         ja3_string = f"{ssl_version},{ciphers_str},{extensions_str},{curves_str},{point_formats_str}"
         ja3_hash = hashlib.md5(ja3_string.encode("utf-8")).hexdigest()
         return ja3_string, ja3_hash
+
+    @staticmethod
+    def compute_ja4_fingerprint(
+        protocol: str,
+        tls_version: int,
+        has_sni: bool,
+        ciphers: List[int],
+        extensions: List[int],
+        alpn: str = "00",
+        has_tls13: bool = False,
+    ) -> str:
+        """
+        Compute observable JA4 Client fingerprint:
+          Format: {protocol}{version}{sni}{ciphers_count}{ext_count}{alpn}_{ciphers_hash}_{ext_hash}
+          e.g. t13d151100_...
+        Calculated purely on observed client handshake fields. Does not fabricate hashes.
+        """
+        proto_char = "t" if "TCP" in protocol.upper() else ("q" if "QUIC" in protocol.upper() else "t")
+        ver_str = "13" if (has_tls13 or tls_version == 0x0304) else ("12" if tls_version == 0x0303 else "10")
+        sni_char = "d" if has_sni else "i"
+        
+        filtered_ciphers = sorted([c for c in ciphers if c not in GREASE_VALUES])
+        filtered_exts = sorted([e for e in extensions if e not in GREASE_VALUES])
+
+        cipher_count = f"{min(len(filtered_ciphers), 99):02d}"
+        ext_count = f"{min(len(filtered_exts), 99):02d}"
+        part_a = f"{proto_char}{ver_str}{sni_char}{cipher_count}{ext_count}{alpn}"
+
+        ciphers_hex = ",".join(f"{c:04x}" for c in filtered_ciphers)
+        part_b = hashlib.sha256(ciphers_hex.encode("utf-8")).hexdigest()[:12] if filtered_ciphers else "000000000000"
+
+        exts_hex = ",".join(f"{e:04x}" for e in filtered_exts)
+        part_c = hashlib.sha256(exts_hex.encode("utf-8")).hexdigest()[:12] if filtered_exts else "000000000000"
+
+        return f"{part_a}_{part_b}_{part_c}"
 
     def analyze_flow(
         self,
@@ -129,9 +308,34 @@ class TLSMetadataDetector:
 
         evidence.append(f"Encrypted session transport (Port: {dst_port_int}, Protocol: {protocol})")
 
-        # 1. JA3 / Handshake Metadata Evaluation (if observable in metadata)
+        # 1. JA3 / JA4 Handshake Metadata Evaluation (if observable in metadata or raw payload)
         observable_ja3 = metadata.get("ja3") or metadata.get("ja3_hash")
-        if not observable_ja3 and "tls_handshake" in metadata:
+        raw_payload = metadata.get("raw_payload") or metadata.get("raw_frame")
+        parsed_hello = None
+
+        if isinstance(raw_payload, (bytes, bytearray)) and len(raw_payload) >= 42:
+            parsed_hello = parse_tls_client_hello(bytes(raw_payload))
+
+        if parsed_hello:
+            _, ja3_hash = self.compute_ja3_fingerprint(
+                ssl_version=parsed_hello["version"],
+                ciphers=parsed_hello["ciphers"],
+                extensions=parsed_hello["extensions"],
+                curves=parsed_hello["curves"],
+                point_formats=parsed_hello["point_formats"],
+            )
+            ja4_str = self.compute_ja4_fingerprint(
+                protocol=protocol,
+                tls_version=parsed_hello["version"],
+                has_sni=bool(parsed_hello["sni"]),
+                ciphers=parsed_hello["ciphers"],
+                extensions=parsed_hello["extensions"],
+                has_tls13=parsed_hello.get("has_tls13", False),
+            )
+            if parsed_hello.get("sni"):
+                evidence.append(f"Passive TLS SNI: {parsed_hello['sni']}")
+
+        elif not observable_ja3 and "tls_handshake" in metadata:
             hs = metadata["tls_handshake"]
             _, ja3_hash = self.compute_ja3_fingerprint(
                 ssl_version=hs.get("version", 771),
@@ -139,6 +343,13 @@ class TLSMetadataDetector:
                 extensions=hs.get("extensions", []),
                 curves=hs.get("curves", []),
                 point_formats=hs.get("point_formats", []),
+            )
+            ja4_str = self.compute_ja4_fingerprint(
+                protocol=protocol,
+                tls_version=hs.get("version", 771),
+                has_sni=bool(hs.get("sni")),
+                ciphers=hs.get("ciphers", []),
+                extensions=hs.get("extensions", []),
             )
         elif observable_ja3:
             ja3_hash = str(observable_ja3).lower()
@@ -153,7 +364,7 @@ class TLSMetadataDetector:
                 score += 0.10
 
         # Optional JA4 fingerprint representation
-        observable_ja4 = metadata.get("ja4")
+        observable_ja4 = metadata.get("ja4") or ja4_str
         if observable_ja4:
             ja4_str = str(observable_ja4)
             evidence.append(f"Passive JA4 fingerprint: {ja4_str}")

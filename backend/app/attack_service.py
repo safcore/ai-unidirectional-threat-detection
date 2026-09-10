@@ -408,6 +408,7 @@ class AttackService:
 
     def stop_attack(self, attack_id: str) -> Optional[Dict[str, Any]]:
         """Signal an attack job to stop immediately."""
+        thread_to_join = None
         with self._lock:
             job = self._jobs.get(attack_id)
             if not job:
@@ -415,7 +416,12 @@ class AttackService:
             job.stop_event.set()
             if job.status == "running":
                 job.status = "stopping"
-            return job.to_dict()
+            if job.thread and job.thread.is_alive():
+                thread_to_join = job.thread
+            res = job.to_dict()
+        if thread_to_join:
+            thread_to_join.join(timeout=0.3)
+        return res
 
     def get_status(self, attack_id: Optional[str] = None) -> Dict[str, Any]:
         """Get status of a specific job or all jobs."""
@@ -437,6 +443,7 @@ class AttackService:
     def stop_all(self) -> int:
         """Stop all running attack jobs."""
         stopped = 0
+        threads_to_join = []
         with self._lock:
             for job in self._jobs.values():
                 if job.status in ("running", "stopping"):
@@ -444,6 +451,10 @@ class AttackService:
                     job.status = "stopped"
                     job.ended_at = time.time()
                     stopped += 1
+                    if job.thread and job.thread.is_alive():
+                        threads_to_join.append(job.thread)
+        for t in threads_to_join:
+            t.join(timeout=0.3)
         return stopped
 
 

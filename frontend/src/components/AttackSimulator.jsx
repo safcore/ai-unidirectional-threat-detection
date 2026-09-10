@@ -99,7 +99,7 @@ function AttackSimulator() {
       </div>
 
       <div className="sim-footer">
-        <span className="sim-helper">Traffic is processed through the live M1 → M5 pipeline.</span>
+        <span className="sim-helper">Simulated test traffic is evaluated through the M1 → M5 detection pipeline.</span>
         {statusMsg && <span className="sim-live-status">{statusMsg}</span>}
       </div>
     </div>

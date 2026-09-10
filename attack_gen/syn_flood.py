@@ -1,5 +1,9 @@
 """
 SYN Flood attack generator with Scapy/raw-socket and pure-Python simulation modes.
+
+TEST-ONLY MODULE / SIMULATION HARNESS:
+This generator is strictly for offline testing, dataset generation, and pipeline
+benchmarking in controlled lab environments. It is never active in production ingress.
 """
 from __future__ import annotations
 
