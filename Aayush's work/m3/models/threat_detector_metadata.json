@@ -1,0 +1,201 @@
+{
+  "training_data_source": "FALLBACK_SYNTHETIC_SMOKE_TEST",
+  "is_smoke_test": true,
+  "samples_count": 500,
+  "train_samples_count": 400,
+  "test_samples_count": 100,
+  "class_distribution": {
+    "BENIGN": 200,
+    "SYN_FLOOD": 100,
+    "UDP_FLOOD": 100,
+    "PORT_SCAN": 100
+  },
+  "feature_count": 76,
+  "feature_names": [
+    "Flow Duration",
+    "Total Fwd Packets",
+    "Total Backward Packets",
+    "Total Length of Fwd Packets",
+    "Total Length of Bwd Packets",
+    "Fwd Packet Length Max",
+    "Fwd Packet Length Min",
+    "Fwd Packet Length Mean",
+    "Fwd Packet Length Std",
+    "Bwd Packet Length Max",
+    "Bwd Packet Length Min",
+    "Bwd Packet Length Mean",
+    "Bwd Packet Length Std",
+    "Min Packet Length",
+    "Max Packet Length",
+    "Packet Length Mean",
+    "Packet Length Std",
+    "Packet Length Variance",
+    "Average Packet Size",
+    "Avg Fwd Segment Size",
+    "Avg Bwd Segment Size",
+    "Flow Bytes/s",
+    "Flow Packets/s",
+    "Fwd Packets/s",
+    "Bwd Packets/s",
+    "Flow IAT Mean",
+    "Flow IAT Std",
+    "Flow IAT Max",
+    "Flow IAT Min",
+    "Fwd IAT Total",
+    "Fwd IAT Mean",
+    "Fwd IAT Std",
+    "Fwd IAT Max",
+    "Fwd IAT Min",
+    "Bwd IAT Total",
+    "Bwd IAT Mean",
+    "Bwd IAT Std",
+    "Bwd IAT Max",
+    "Bwd IAT Min",
+    "FIN Flag Count",
+    "SYN Flag Count",
+    "RST Flag Count",
+    "PSH Flag Count",
+    "ACK Flag Count",
+    "URG Flag Count",
+    "CWE Flag Count",
+    "ECE Flag Count",
+    "Fwd PSH Flags",
+    "Bwd PSH Flags",
+    "Fwd URG Flags",
+    "Bwd URG Flags",
+    "tcp_flag_bitmask",
+    "Down/Up Ratio",
+    "TTL Mean",
+    "TTL Std",
+    "TTL Variance",
+    "TTL Min",
+    "TTL Max",
+    "TCP Window Size Init",
+    "TCP Window Size Mean",
+    "IP Flags DF Count",
+    "IP Flags MF Count",
+    "Retransmission Count",
+    "Port Sequentiality Score",
+    "protocol",
+    "bidirectional_duration_ms",
+    "bidirectional_packets",
+    "bidirectional_bytes",
+    "src2dst_packets",
+    "src2dst_bytes",
+    "dst2src_packets",
+    "dst2src_bytes",
+    "application_confidence",
+    "port_access_SINGLE",
+    "port_access_SEQUENTIAL",
+    "port_access_RANDOM"
+  ],
+  "evaluation_metrics": {
+    "accuracy": 1.0,
+    "classification_report": {
+      "BENIGN": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 40.0
+      },
+      "PORT_SCAN": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 20.0
+      },
+      "SYN_FLOOD": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 20.0
+      },
+      "UDP_FLOOD": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 20.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 100.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 100.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        40,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        20,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        20,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        20
+      ]
+    ],
+    "evaluated_classes": [
+      "BENIGN",
+      "PORT_SCAN",
+      "SYN_FLOOD",
+      "UDP_FLOOD"
+    ]
+  },
+  "top_features": [
+    [
+      "TCP Window Size Mean",
+      0.08786
+    ],
+    [
+      "Flow IAT Max",
+      0.05546
+    ],
+    [
+      "bidirectional_duration_ms",
+      0.04835
+    ],
+    [
+      "SYN Flag Count",
+      0.04141
+    ],
+    [
+      "Fwd Packet Length Mean",
+      0.03959
+    ],
+    [
+      "Fwd IAT Max",
+      0.03936
+    ],
+    [
+      "Avg Bwd Segment Size",
+      0.03858
+    ],
+    [
+      "Fwd Packet Length Min",
+      0.03843
+    ]
+  ],
+  "training_timestamp": "2026-09-03T04:57:23.318586Z"
+}

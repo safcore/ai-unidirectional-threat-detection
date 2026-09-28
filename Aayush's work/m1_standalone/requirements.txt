@@ -1,0 +1,2 @@
+# M1 Ingest Pipeline Dependencies
+dpkt>=1.9.8
