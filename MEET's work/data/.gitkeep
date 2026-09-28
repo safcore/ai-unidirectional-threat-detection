@@ -1,0 +1,2 @@
+# Place PCAP files here for replay mode.
+# Example: python run.py --pcap data/traffic.pcap

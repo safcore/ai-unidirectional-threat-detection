@@ -1,0 +1,25 @@
+# NetWatch — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# ── Core ML ──────────────────────────────────────────────────────────────────
+scikit-learn>=1.4.0
+xgboost>=2.0.0
+
+# ── Web Dashboard ─────────────────────────────────────────────────────────────
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# ── Packet capture (optional — for real NIC capture) ─────────────────────────
+# scapy>=2.5.0          # uncomment for live capture / PCAP with Scapy
+# pyshark>=0.6          # uncomment for Wireshark-based dissection
+
+# ── Data processing ───────────────────────────────────────────────────────────
+pandas>=2.1.0
+numpy>=1.26.0
+
+# ── Optional deep learning (beacon LSTM) ──────────────────────────────────────
+# torch>=2.1.0          # uncomment if using LSTM beacon model
+
+# ── Development / testing ─────────────────────────────────────────────────────
+pytest>=8.0.0
+pytest-cov>=5.0.0

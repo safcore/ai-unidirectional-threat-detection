@@ -66,3 +66,17 @@ Thumbs.db
 
 # Temporary files
 tempCodeRunnerFile.py
+
+# Datasets, captures and databases
+/data/
+*.csv
+*.pcap
+*.pcapng
+*.db
+*.sqlite3
+*.zip
+/docs/
+/walkthrough_package/
+PREVIOUS_M3_M4_FILES_TO_REMOVE.md
+
+

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NetWatch — AI Cyber Threat Detection</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  :root {
+    --bg:     #0a0e1a;
+    --panel:  #111827;
+    --border: #1f2937;
+    --text:   #e2e8f0;
+    --muted:  #64748b;
+    --accent: #3b82f6;
+    --red:    #ef4444;
+    --orange: #f97316;
+    --yellow: #eab308;
+    --green:  #22c55e;
+    --purple: #a855f7;
+    --teal:   #14b8a6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', monospace; font-size: 13px; }
+
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  header h1 { font-size: 20px; font-weight: 700; color: var(--accent); letter-spacing: 1px; }
+  header .subtitle { color: var(--muted); font-size: 12px; }
+  .live-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green);
+              animation: pulse 1.5s infinite; margin-left: auto; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 16px 24px 0;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .stat-card .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+
+  .charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    padding: 12px 24px 0;
+  }
+  .chart-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .chart-panel h3 { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+
+  .alerts-section { padding: 12px 24px 24px; }
+  .alerts-section h2 { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:hover { background: rgba(255,255,255,0.03); cursor: pointer; }
+  td { padding: 7px 10px; vertical-align: middle; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-CRITICAL { background: rgba(239,68,68,0.2);  color: var(--red); }
+  .badge-HIGH     { background: rgba(249,115,22,0.2); color: var(--orange); }
+  .badge-MEDIUM   { background: rgba(234,179,8,0.2);  color: var(--yellow); }
+  .badge-LOW      { background: rgba(34,197,94,0.2);  color: var(--green); }
+
+  .class-DDOS    { color: var(--red); }
+  .class-RECON   { color: var(--orange); }
+  .class-BEACON  { color: var(--purple); }
+  .class-DGA     { color: var(--yellow); }
+  .class-EXFIL   { color: var(--teal); }
+  .class-TLS_ANOMALY { color: var(--accent); }
+  .class-DNS_TUNNEL  { color: var(--muted); }
+
+  .conf-bar {
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+  .conf-bar-fill {
+    height: 6px; border-radius: 3px;
+    background: var(--accent);
+    transition: width 0.3s;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    width: 600px; max-width: 95vw;
+    max-height: 80vh; overflow-y: auto;
+  }
+  .modal h3 { margin-bottom: 16px; font-size: 16px; }
+  .modal-close { float: right; cursor: pointer; color: var(--muted); font-size: 20px; }
+  .evidence-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .evidence-item { background: var(--bg); border-radius: 6px; padding: 8px 12px; }
+  .evidence-item .key { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+  .evidence-item .val { font-size: 14px; font-weight: 600; margin-top: 2px; }
+  .mitre-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(59,130,246,0.15);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    font-size: 11px;
+    margin: 4px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⚡ NETWATCH</h1>
+    <div class="subtitle">AI-Based Cyber Threat Detection · Unidirectional Traffic Analysis</div>
+  </div>
+  <div class="live-dot" title="Live stream active"></div>
+</header>
+
+<!-- Stat cards -->
+<div class="grid">
+  <div class="stat-card">
+    <div class="label">Total Alerts</div>
+    <div class="value" id="stat-total" style="color:var(--red)">0</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Flows / sec</div>
+    <div class="value" id="stat-fps" style="color:var(--accent)">0</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Packets / sec</div>
+    <div class="value" id="stat-pps" style="color:var(--green)">0</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Critical Alerts</div>
+    <div class="value" id="stat-critical" style="color:var(--orange)">0</div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="charts-row">
+  <div class="chart-panel">
+    <h3>Threat Distribution</h3>
+    <div id="chart-pie" style="height:200px"></div>
+  </div>
+  <div class="chart-panel">
+    <h3>Alerts Over Time</h3>
+    <div id="chart-timeline" style="height:200px"></div>
+  </div>
+  <div class="chart-panel">
+    <h3>Flow Rate (last 30s)</h3>
+    <div id="chart-fps" style="height:200px"></div>
+  </div>
+</div>
+
+<!-- Alert table -->
+<div class="alerts-section">
+  <h2>🔴 Live Alerts <span id="alert-count" style="color:var(--muted);font-size:12px;font-weight:normal"></span></h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Threat Class</th>
+        <th>Subtype</th>
+        <th>Severity</th>
+        <th>Confidence</th>
+        <th>Source IP</th>
+        <th>Destination</th>
+        <th>MITRE</th>
+        <th>Protocol</th>
+      </tr>
+    </thead>
+    <tbody id="alert-tbody"></tbody>
+  </table>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-content">
+    <span class="modal-close" onclick="document.getElementById('modal-overlay').classList.remove('show')">✕</span>
+    <h3 id="modal-title">Alert Detail</h3>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+const MAX_TABLE_ROWS = 200;
+let alerts = [];
+let classCounts = {};
+let timelineBuckets = {};  // "HH:MM:SS" → count
+let fpsSeries = [];
+
+// ── Colour map ────────────────────────────────────────────────────────────────
+const CLASS_COLORS = {
+  DDOS: '#ef4444', RECON: '#f97316', BEACON: '#a855f7',
+  DGA: '#eab308', EXFIL: '#14b8a6', TLS_ANOMALY: '#3b82f6', DNS_TUNNEL: '#64748b'
+};
+
+// ── SSE Stream ────────────────────────────────────────────────────────────────
+const evtSource = new EventSource('/api/stream');
+evtSource.onmessage = (e) => {
+  const alert = JSON.parse(e.data);
+  addAlert(alert);
+};
+evtSource.onerror = () => {
+  console.warn('SSE disconnected, retrying...');
+};
+
+// ── Poll stats every 2s ───────────────────────────────────────────────────────
+setInterval(fetchStats, 2000);
+fetchStats();
+
+function fetchStats() {
+  fetch('/api/stats').then(r => r.json()).then(s => {
+    document.getElementById('stat-total').textContent = (s.total_alerts || 0).toLocaleString();
+    document.getElementById('stat-fps').textContent   = (s.flows_per_sec || 0).toLocaleString();
+    document.getElementById('stat-pps').textContent   = (s.packets_per_sec || 0).toLocaleString();
+    const critical = (s.by_severity || {}).CRITICAL || 0;
+    document.getElementById('stat-critical').textContent = critical.toLocaleString();
+
+    // Update pie chart
+    if (s.by_class) {
+      const labels = Object.keys(s.by_class);
+      const values = labels.map(k => s.by_class[k]);
+      const colors = labels.map(k => CLASS_COLORS[k] || '#888');
+      Plotly.react('chart-pie', [{
+        type: 'pie', labels, values,
+        marker: { colors },
+        textinfo: 'label+percent',
+        textfont: { color: '#e2e8f0', size: 11 },
+        hole: 0.4,
+      }], {
+        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+        margin: { t: 0, b: 0, l: 0, r: 0 },
+        showlegend: false,
+        font: { color: '#e2e8f0' },
+      }, { displayModeBar: false });
+    }
+
+    // Flow rate chart
+    if (s.history) {
+      const times = s.history.map(h => new Date(h.timestamp * 1000).toLocaleTimeString());
+      const fps   = s.history.map(h => h.flows_per_sec || 0);
+      Plotly.react('chart-fps', [{
+        x: times, y: fps, type: 'scatter', mode: 'lines',
+        line: { color: '#3b82f6', width: 2 },
+        fill: 'tozeroy', fillcolor: 'rgba(59,130,246,0.1)',
+      }], {
+        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+        margin: { t: 10, b: 30, l: 40, r: 10 },
+        xaxis: { tickfont: { color: '#64748b', size: 9 }, gridcolor: '#1f2937' },
+        yaxis: { tickfont: { color: '#64748b', size: 9 }, gridcolor: '#1f2937' },
+        font: { color: '#e2e8f0' },
+      }, { displayModeBar: false });
+    }
+  }).catch(console.error);
+}
+
+// ── Add alert to table ────────────────────────────────────────────────────────
+function addAlert(alert) {
+  alerts.unshift(alert);
+  if (alerts.length > MAX_TABLE_ROWS) alerts.pop();
+
+  // Track for timeline chart
+  const ts = new Date(alert.timestamp * 1000).toLocaleTimeString();
+  timelineBuckets[ts] = (timelineBuckets[ts] || 0) + 1;
+
+  // Re-render table
+  renderTable();
+  updateTimeline();
+
+  // Flash the live dot
+  const dot = document.querySelector('.live-dot');
+  dot.style.background = '#ef4444';
+  setTimeout(() => { dot.style.background = '#22c55e'; }, 300);
+}
+
+function renderTable() {
+  const tbody = document.getElementById('alert-tbody');
+  document.getElementById('alert-count').textContent = `(${alerts.length} shown)`;
+
+  tbody.innerHTML = alerts.slice(0, 100).map(a => {
+    const conf = Math.round((a.confidence || 0) * 100);
+    const ts   = new Date((a.timestamp || 0) * 1000).toLocaleTimeString();
+    const cls  = a.threat_class || '';
+    const sev  = a.severity || 'MEDIUM';
+    return `<tr onclick="showDetail(${JSON.stringify(JSON.stringify(a))})">
+      <td style="color:var(--muted)">${ts}</td>
+      <td><b class="class-${cls}">${cls}</b></td>
+      <td style="color:var(--muted)">${a.threat_subtype || ''}</td>
+      <td><span class="badge badge-${sev}">${sev}</span></td>
+      <td>
+        <div class="conf-bar">
+          <div class="conf-bar-fill" style="width:${conf}px;max-width:80px"></div>
+          <span>${conf}%</span>
+        </div>
+      </td>
+      <td style="font-family:monospace">${a.src_ip || ''}</td>
+      <td style="font-family:monospace">${a.dst_ip || ''}:${a.dst_port || ''}</td>
+      <td style="color:var(--accent);font-size:11px">${a.mitre_technique_id || ''}</td>
+      <td style="color:var(--muted)">${a.protocol || ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateTimeline() {
+  const keys   = Object.keys(timelineBuckets).slice(-30);
+  const vals   = keys.map(k => timelineBuckets[k]);
+  const colors = vals.map(v => v > 5 ? '#ef4444' : v > 2 ? '#f97316' : '#3b82f6');
+  Plotly.react('chart-timeline', [{
+    x: keys, y: vals, type: 'bar',
+    marker: { color: colors },
+  }], {
+    paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+    margin: { t: 10, b: 30, l: 40, r: 10 },
+    xaxis: { tickfont: { color: '#64748b', size: 9 }, gridcolor: '#1f2937' },
+    yaxis: { tickfont: { color: '#64748b', size: 9 }, gridcolor: '#1f2937' },
+    font: { color: '#e2e8f0' },
+  }, { displayModeBar: false });
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function showDetail(jsonStr) {
+  const a = JSON.parse(jsonStr);
+  document.getElementById('modal-title').innerHTML =
+    `<span class="class-${a.threat_class}">${a.threat_class}</span> — ${a.threat_subtype}`;
+
+  const ev = a.evidence || {};
+  const evHtml = Object.entries(ev).map(([k, v]) =>
+    `<div class="evidence-item"><div class="key">${k}</div><div class="val">${v}</div></div>`
+  ).join('');
+
+  document.getElementById('modal-body').innerHTML = `
+    <div style="margin-bottom:12px">
+      <span class="badge badge-${a.severity}">${a.severity}</span>
+      <span style="margin-left:8px;color:var(--muted)">Confidence: <b>${Math.round(a.confidence*100)}%</b></span>
+      <br/><small style="color:var(--muted)">${a.timestamp_iso}</small>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="color:var(--muted);font-size:11px">MITRE ATT&CK</div>
+      <span class="mitre-badge">${a.mitre_tactic || '—'}</span>
+      <span class="mitre-badge">${a.mitre_technique_id || '—'} ${a.mitre_technique || ''}</span>
+    </div>
+    <div style="font-family:monospace;font-size:12px;margin-bottom:12px">
+      ${a.src_ip}:${a.src_port} → ${a.dst_ip}:${a.dst_port} [${a.protocol}]
+    </div>
+    <div style="color:var(--muted);font-size:11px;margin-bottom:6px">Evidence Features</div>
+    <div class="evidence-grid">${evHtml}</div>
+    <div style="margin-top:12px;color:var(--muted);font-size:10px">Flow ID: ${a.flow_id}</div>
+  `;
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function closeModal(e) {
+  if (e.target.id === 'modal-overlay')
+    document.getElementById('modal-overlay').classList.remove('show');
+}
+
+// ── Load recent alerts on start ───────────────────────────────────────────────
+fetch('/api/alerts?limit=50').then(r => r.json()).then(data => {
+  data.reverse().forEach(addAlert);
+}).catch(console.error);
+</script>
+</body>
+</html>
