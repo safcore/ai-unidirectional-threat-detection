@@ -240,7 +240,7 @@ export async function fetchAttackStatus(attackId) {
   return response.json()
 }
 
-export async function requestAIAnalysis(alertId, signal = null, alertData = null) {
+export async function requestAIAnalysis(alertId, signal = null, alertData = null, refresh = false) {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 50000)
 
@@ -259,7 +259,10 @@ export async function requestAIAnalysis(alertId, signal = null, alertData = null
       fetchOptions.body = JSON.stringify({ alert: alertData })
     }
 
-    const response = await fetch(`${API_BASE_URL}/ai/analyze/${alertId}`, fetchOptions)
+    const endpointUrl = refresh
+      ? `${API_BASE_URL}/ai/analyze/${alertId}?refresh=true`
+      : `${API_BASE_URL}/ai/analyze/${alertId}`
+    const response = await fetch(endpointUrl, fetchOptions)
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}))

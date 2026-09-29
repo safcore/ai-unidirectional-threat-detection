@@ -52,6 +52,7 @@ function AlertDetails({ alert, onClose, onInvestigateIp = null, onFilterMitre = 
   const inFlightRef = useRef(null)
   const abortControllerRef = useRef(null)
   const nemotronSectionRef = useRef(null)
+  const autoInvestigatedAlertIdRef = useRef(null)
 
   // Keyboard shortcut listener: ESC closes drawer
   useEffect(() => {
@@ -64,7 +65,7 @@ function AlertDetails({ alert, onClose, onInvestigateIp = null, onFilterMitre = 
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  // Reset Nemotron state whenever a different alert is selected
+  // Reset and automatically trigger Nemotron investigation whenever an alert is selected
   useEffect(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
@@ -74,6 +75,11 @@ function AlertDetails({ alert, onClose, onInvestigateIp = null, onFilterMitre = 
     setAiError(null)
     setAiIsTimeout(false)
     setAiLoading(false)
+
+    if (alert?.alert_id) {
+      autoInvestigatedAlertIdRef.current = alert.alert_id
+      handleRunNemotron(alert, false)
+    }
 
     return () => {
       if (abortControllerRef.current) {
@@ -223,9 +229,11 @@ function AlertDetails({ alert, onClose, onInvestigateIp = null, onFilterMitre = 
   if (!alert) return null
 
   // Run Nemotron Investigation
-  const handleRunNemotron = async () => {
-    if (!alert?.alert_id) return
-    if (aiLoading || inFlightRef.current === alert.alert_id) return
+  const handleRunNemotron = async (targetAlert = alert, isRefresh = false) => {
+    const alertObj = targetAlert || alert
+    const targetAlertId = alertObj?.alert_id
+    if (!targetAlertId) return
+    if (aiLoading || inFlightRef.current === targetAlertId) return
 
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
@@ -233,13 +241,13 @@ function AlertDetails({ alert, onClose, onInvestigateIp = null, onFilterMitre = 
     const controller = new AbortController()
     abortControllerRef.current = controller
 
-    inFlightRef.current = alert.alert_id
+    inFlightRef.current = targetAlertId
     setAiLoading(true)
     setAiError(null)
     setAiIsTimeout(false)
 
     try {
-      const data = await requestAIAnalysis(alert.alert_id, controller.signal, alert.rawAlert || alert)
+      const data = await requestAIAnalysis(targetAlertId, controller.signal, alertObj.rawAlert || alertObj, isRefresh)
       if (data && data.ai_analysis) {
         if (data.ai_analysis.error) {
           const rawErr = data.ai_analysis.error
@@ -257,7 +265,7 @@ function AlertDetails({ alert, onClose, onInvestigateIp = null, onFilterMitre = 
         setAiAnalysis({
           ai_summary: data.summary,
           threat_assessment: data.threat_assessment || 'Threat confirmed by AI model.',
-          risk_level: data.risk_level || alert.severity,
+          risk_level: data.risk_level || alertObj.severity,
           why_suspicious: data.why_suspicious || [],
           recommended_actions: data.recommended_actions || [],
         })
@@ -280,13 +288,13 @@ function AlertDetails({ alert, onClose, onInvestigateIp = null, onFilterMitre = 
     }
   }
 
-  // Scroll to Nemotron section
+  // Scroll to Nemotron section & optionally re-trigger
   const handleScrollToNemotron = () => {
     if (nemotronSectionRef.current) {
       nemotronSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
-    if (!aiAnalysis && !aiLoading) {
-      handleRunNemotron()
+    if (!aiLoading) {
+      handleRunNemotron(alert, !!aiAnalysis)
     }
   }
 
@@ -444,12 +452,22 @@ function AlertDetails({ alert, onClose, onInvestigateIp = null, onFilterMitre = 
             <div className="incident-header-actions">
               <button
                 type="button"
-                className="btn-header-action btn-header-ai"
+                className={`btn-header-action btn-header-ai ${aiLoading ? 'is-loading' : ''}`}
                 onClick={handleScrollToNemotron}
-                title="Invoke NVIDIA Nemotron Advisory AI"
+                title={aiAnalysis ? 'View or re-run NVIDIA Nemotron Advisory AI' : 'Invoke NVIDIA Nemotron Advisory AI'}
               >
-                <Sparkles size={13} />
-                <span>INVESTIGATE WITH NEMOTRON</span>
+                {aiLoading ? (
+                  <RefreshCw size={13} className="spin" />
+                ) : (
+                  <Sparkles size={13} />
+                )}
+                <span>
+                  {aiLoading
+                    ? 'INVESTIGATING…'
+                    : aiAnalysis
+                    ? 'RE-INVESTIGATE WITH NEMOTRON'
+                    : 'INVESTIGATE WITH NEMOTRON'}
+                </span>
               </button>
 
               <button
@@ -734,13 +752,27 @@ function AlertDetails({ alert, onClose, onInvestigateIp = null, onFilterMitre = 
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {aiLoading && <span className="ai-status-pill">Investigating with Nemotron…</span>}
-                {aiAnalysis && !aiLoading && <span className="ai-status-pill ready">● Analysis Ready</span>}
+                {aiAnalysis && !aiLoading && (
+                  <>
+                    <span className="ai-status-pill ready">● Analysis Ready</span>
+                    <button
+                      type="button"
+                      className="btn-console-secondary"
+                      style={{ padding: '4px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                      onClick={() => handleRunNemotron(alert, true)}
+                      title="Re-run Nemotron investigation with fresh analysis"
+                    >
+                      <RefreshCw size={11} />
+                      <span>RE-INVESTIGATE</span>
+                    </button>
+                  </>
+                )}
                 {!aiAnalysis && !aiLoading && (
                   <button
                     type="button"
                     className="btn-console-primary"
                     style={{ padding: '5px 12px', fontSize: '11px' }}
-                    onClick={handleRunNemotron}
+                    onClick={() => handleRunNemotron(alert, false)}
                   >
                     <Sparkles size={12} />
                     <span>ANALYZE INCIDENT</span>
@@ -763,7 +795,7 @@ function AlertDetails({ alert, onClose, onInvestigateIp = null, onFilterMitre = 
                   <AlertTriangle size={14} className="text-amber" />
                   <span>{aiIsTimeout ? 'Nemotron is taking longer than expected. Please retry.' : aiError}</span>
                 </div>
-                <button type="button" className="btn-retry" onClick={handleRunNemotron}>
+                <button type="button" className="btn-retry" onClick={() => handleRunNemotron(alert, true)}>
                   <RefreshCw size={11} />
                   <span>Retry Investigation</span>
                 </button>

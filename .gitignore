@@ -31,9 +31,11 @@ htmlcov/
 coverage.xml
 *.cover
 
-# Build / packaging
+# Build / packaging / frontend
 build/
 dist/
+node_modules/
+**/node_modules/
 *.egg-info/
 .eggs/
 wheels/
